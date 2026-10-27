@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.apexpvp.bot.BotDifficultyTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:00" hostname="asustuf" time="0.002">
+  <properties/>
+  <testcase name="Verify string parsing fallback" classname="com.apexpvp.bot.BotDifficultyTest" time="0.001"/>
+  <testcase name="Verify bot difficulty settings, ascending CPS, and strict 3.0 reach cap" classname="com.apexpvp.bot.BotDifficultyTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

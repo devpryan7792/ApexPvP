@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.apexpvp.kit.HotbarLayoutValidatorTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:01" hostname="asustuf" time="0.002">
+  <properties/>
+  <testcase name="Verify out of bounds source slots (&lt;0 or &gt;35) are rejected" classname="com.apexpvp.kit.HotbarLayoutValidatorTest" time="0.0"/>
+  <testcase name="Verify out of bounds target slots (&lt;0 or &gt;8) are rejected" classname="com.apexpvp.kit.HotbarLayoutValidatorTest" time="0.0"/>
+  <testcase name="Verify duplicate source kit slot (item duplication attempt) is rejected" classname="com.apexpvp.kit.HotbarLayoutValidatorTest" time="0.0"/>
+  <testcase name="Verify valid injective hotbar permutations are accepted" classname="com.apexpvp.kit.HotbarLayoutValidatorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

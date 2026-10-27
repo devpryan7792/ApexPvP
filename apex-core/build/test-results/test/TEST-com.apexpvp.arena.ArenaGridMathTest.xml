@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.apexpvp.arena.ArenaGridMathTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:00" hostname="asustuf" time="0.021">
+  <properties/>
+  <testcase name="Verify large scale mathematical non-collision across 10,000 instances including negative coordinates" classname="com.apexpvp.arena.ArenaGridMathTest" time="0.019"/>
+  <testcase name="Verify minimum spatial clearance between adjacent instances along grid" classname="com.apexpvp.arena.ArenaGridMathTest" time="0.001"/>
+  <testcase name="Verify mathematical grid allocation prevents spatial collision across templates and instances" classname="com.apexpvp.arena.ArenaGridMathTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

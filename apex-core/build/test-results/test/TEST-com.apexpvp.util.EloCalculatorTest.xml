@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="EloCalculator Mathematical &amp; Dynamic K-Factor Tests" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:02" hostname="asustuf" time="0.003">
+  <properties/>
+  <testcase name="Verify monotonic scaling: higher opponent ELO strictly increases delta" classname="com.apexpvp.util.EloCalculatorTest" time="0.001"/>
+  <testcase name="Verify minimum ELO delta is at least 1 point even in extreme mismatches" classname="com.apexpvp.util.EloCalculatorTest" time="0.0"/>
+  <testcase name="Verify calculateDynamicDelta applies provisional K-factor for new players" classname="com.apexpvp.util.EloCalculatorTest" time="0.0"/>
+  <testcase name="Verify dynamic K-factor selection based on match count and ELO threshold" classname="com.apexpvp.util.EloCalculatorTest" time="0.0"/>
+  <testcase name="Verify upset victories yield higher ELO gains than expected wins" classname="com.apexpvp.util.EloCalculatorTest" time="0.0"/>
+  <testcase name="Verify expected score between equally rated opponents is 0.5" classname="com.apexpvp.util.EloCalculatorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

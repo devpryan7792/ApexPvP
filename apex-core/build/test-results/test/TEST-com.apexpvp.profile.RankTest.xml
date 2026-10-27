@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.apexpvp.profile.RankTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:02" hostname="asustuf" time="0.001">
+  <properties/>
+  <testcase name="Verify exactly 18 competitive sub-ranks exist across 6 tiers in ascending order" classname="com.apexpvp.profile.RankTest" time="0.0"/>
+  <testcase name="Verify backward compatibility parsing for legacy rank strings" classname="com.apexpvp.profile.RankTest" time="0.0"/>
+  <testcase name="Verify ELO mapping to corresponding Ranks" classname="com.apexpvp.profile.RankTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

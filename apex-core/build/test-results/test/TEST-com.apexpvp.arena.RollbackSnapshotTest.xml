@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.apexpvp.arena.RollbackSnapshotTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:00" hostname="asustuf" time="0.041">
+  <properties/>
+  <testcase name="Verify first-write-wins: intermediate changes do not overwrite pristine state" classname="com.apexpvp.arena.RollbackSnapshotTest" time="0.031"/>
+  <testcase name="Verify concurrent multi-threaded block record deduplication under rapid edits" classname="com.apexpvp.arena.RollbackSnapshotTest" time="0.006"/>
+  <testcase name="Verify snapshot clear" classname="com.apexpvp.arena.RollbackSnapshotTest" time="0.001"/>
+  <testcase name="Verify recordOriginal(BlockState) captures pristine state directly" classname="com.apexpvp.arena.RollbackSnapshotTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,1 @@
+{"id":"apex-velocity","name":"ApexPvP Velocity","version":"1.0.0-SNAPSHOT","description":"ApexPvP Velocity Proxy Bridge for network-wide queueing and rank sync","authors":["ApexPvP Team"],"dependencies":[],"main":"com.apexpvp.velocity.ApexVelocityPlugin"}
