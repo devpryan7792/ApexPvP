@@ -44,6 +44,10 @@ commands:
   bet:
     description: Wager on active duel combatants as a spectator
     usage: /bet <player> <amount>
+  kits:
+    description: Open the kit selection menu or configure combat kits
+    usage: /kits [list|create|delete|give]
+    aliases: [kit]
 
 permissions:
   apexpvp.admin:
@@ -53,6 +57,17 @@ permissions:
       apexpvp.eco: true
       apexpvp.reload: true
       apexpvp.simduel: true
+      apexpvp.kit.admin: true
+      apexpvp.arena.admin: true
+  apexpvp.kit:
+    description: Access to /kits menu
+    default: true
+  apexpvp.kit.admin:
+    description: Administrative kit creation and modification
+    default: op
+  apexpvp.arena.admin:
+    description: Administrative arena creation and grid management
+    default: op
   apexpvp.simduel:
     description: Access to /apex simduel solo combat simulator
     default: op

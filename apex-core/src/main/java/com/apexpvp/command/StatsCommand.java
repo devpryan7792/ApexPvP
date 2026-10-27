@@ -104,7 +104,15 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(TextUtil.parse("<gray>Rank: " + rank.getMiniMessageBadge() + " " + rank.getMiniMessageDisplay() + "  <dark_gray>•</dark_gray>  <gray>Rating: <gold><bold>" + elo + "</bold> ELO</gold>"));
         sender.sendMessage(TextUtil.parse("<gray>Tier Progress: " + nextRankProgress));
         sender.sendMessage(TextUtil.parse("<gray>Balance: <yellow>" + String.format("%.2f", balance) + "</yellow> coins  <dark_gray>•</dark_gray>  <gray>Multiplier: <green>" + String.format("%.2fx", profile.getStreakMultiplier()) + "</green>"));
-        sender.sendMessage(TextUtil.parse("<gray>Streak: <gold>" + profile.getCurrentStreak() + "</gold> current  <dark_gray>•</dark_gray>  <yellow>" + profile.getBestStreak() + "</yellow> best"));
+        String streakDisplay;
+        if (profile.getCurrentStreak() > 0) {
+            streakDisplay = "<green>+" + profile.getCurrentStreak() + " Wins</green>";
+        } else if (profile.getCurrentLossStreak() > 0) {
+            streakDisplay = "<red>-" + profile.getCurrentLossStreak() + " Losses</red>";
+        } else {
+            streakDisplay = "<gray>None (0)</gray>";
+        }
+        sender.sendMessage(TextUtil.parse("<gray>Streaks: " + streakDisplay + "  <dark_gray>•</dark_gray>  <gray>Best: <yellow>" + profile.getBestStreak() + "W</yellow>  <dark_gray>•</dark_gray>  <gray>Worst: <red>" + profile.getWorstLossStreak() + "L</red>"));
         sender.sendMessage(TextUtil.parse("<gray>Record: <green>" + totalWins + "W</green> / <red>" + totalLosses + "L</red> (<aqua>" + String.format("%.1f", winrate) + "%</aqua>)  <dark_gray>•</dark_gray>  <gray>K/D: <green>" + totalKills + "</green>/<red>" + totalDeaths + "</red> (<yellow>" + String.format("%.2f", kdr) + "</yellow>)"));
 
         if (!profile.getAllStats().isEmpty()) {

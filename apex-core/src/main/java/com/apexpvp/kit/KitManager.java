@@ -129,4 +129,90 @@ public class KitManager {
     public void registerKit(@NotNull Kit kit) {
         kits.put(kit.getId(), kit);
     }
+
+    public boolean createKitFromPlayer(@NotNull String id, @NotNull String displayName, @NotNull org.bukkit.entity.Player player) {
+        String key = id.toLowerCase();
+        ItemStack[] armor = player.getInventory().getArmorContents();
+        ItemStack offhand = player.getInventory().getItemInOffHand();
+        ItemStack[] contents = player.getInventory().getContents();
+        ItemStack[] main = new ItemStack[36];
+        System.arraycopy(contents, 0, main, 0, Math.min(contents.length, 36));
+
+        ItemStack icon = (main[0] != null && !main[0].getType().isAir())
+                ? new ItemStack(main[0].getType())
+                : new ItemStack(Material.DIAMOND_SWORD);
+
+        KitRules rules = new KitRules(false, true, false, false);
+        Kit kit = new Kit(key, displayName, icon, main, armor, offhand, Collections.emptyList(), rules);
+        registerKit(kit);
+        saveKitToConfig(kit);
+        return true;
+    }
+
+    public boolean deleteKitFromConfig(@NotNull String kitId) {
+        String key = kitId.toLowerCase();
+        if (!kits.containsKey(key)) {
+            return false;
+        }
+        kits.remove(key);
+
+        File file = new File(plugin.getDataFolder(), "kits.yml");
+        if (file.exists()) {
+            FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+            config.set("kits." + key, null);
+            try {
+                config.save(file);
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to remove kit " + key + " from kits.yml", e);
+            }
+        }
+        return true;
+    }
+
+    public void saveKitToConfig(@NotNull Kit kit) {
+        File file = new File(plugin.getDataFolder(), "kits.yml");
+        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        String path = "kits." + kit.getId();
+
+        config.set(path + ".display-name", kit.getDisplayName());
+        config.set(path + ".icon", kit.getIcon().getType().name());
+
+        KitRules rules = kit.getRules();
+        config.set(path + ".rules.allow-build", rules.allowBuild());
+        config.set(path + ".rules.allow-hunger", rules.allowHunger());
+        config.set(path + ".rules.combo-mode", rules.comboMode());
+        config.set(path + ".rules.sumo-mode", rules.sumoMode());
+
+        ItemStack[] armor = kit.getArmorContents();
+        config.set(path + ".armor.helmet", serializeItem(armor.length > 3 ? armor[3] : null));
+        config.set(path + ".armor.chestplate", serializeItem(armor.length > 2 ? armor[2] : null));
+        config.set(path + ".armor.leggings", serializeItem(armor.length > 1 ? armor[1] : null));
+        config.set(path + ".armor.boots", serializeItem(armor.length > 0 ? armor[0] : null));
+
+        config.set(path + ".offhand", serializeItem(kit.getOffHand()));
+
+        config.set(path + ".main-items", null); // Clear old slots
+        ItemStack[] main = kit.getMainContents();
+        for (int i = 0; i < main.length; i++) {
+            String itemStr = serializeItem(main[i]);
+            if (itemStr != null) {
+                config.set(path + ".main-items." + i, itemStr);
+            }
+        }
+
+        try {
+            config.save(file);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save kit " + kit.getId() + " to kits.yml", e);
+        }
+    }
+
+    @Nullable
+    private String serializeItem(@Nullable ItemStack item) {
+        if (item == null || item.getType().isAir()) return null;
+        if (item.getAmount() > 1) {
+            return item.getType().name() + ":" + item.getAmount();
+        }
+        return item.getType().name();
+    }
 }

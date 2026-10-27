@@ -92,7 +92,9 @@ public class RankedMatch extends Match {
 
         // Update streaks
         int winStreak = winnerProfile.incrementStreak();
+        winnerProfile.resetLossStreak();
         loserProfile.resetStreak();
+        loserProfile.incrementLossStreak();
 
         if (winStreak >= 3) {
             broadcast("<gold>" + winnerProfile.getUsername() + "</gold> is on a <gradient:#FFAA00:#FF5555><bold>" + winStreak + "-MATCH WIN STREAK!</bold></gradient>");

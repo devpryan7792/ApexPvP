@@ -1,0 +1,170 @@
+package com.apexpvp.ui.gui;
+
+import com.apexpvp.ApexPvPPlugin;
+import com.apexpvp.kit.Kit;
+import com.apexpvp.kit.KitRules;
+import com.apexpvp.util.TextUtil;
+import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Responsive chest GUI displaying all competitive kits with mode/rule breakdowns
+ * and one-click actions for ranked queuing and practice bot matches.
+ */
+public class KitGUI implements Listener {
+
+    public static final class KitGUIHolder implements InventoryHolder {
+        private Inventory inventory;
+
+        @Override
+        public @NotNull Inventory getInventory() {
+            return inventory;
+        }
+
+        public void setInventory(Inventory inventory) {
+            this.inventory = inventory;
+        }
+    }
+
+    private final ApexPvPPlugin plugin;
+    private final NamespacedKey kitKey;
+
+    public KitGUI(@NotNull ApexPvPPlugin plugin) {
+        this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
+        this.kitKey = new NamespacedKey(plugin, "kit_id");
+    }
+
+    public void open(@NotNull Player player) {
+        Collection<Kit> allKits = plugin.getKitManager().getAllKits();
+        int size = allKits.size() > 7 ? 36 : 27;
+
+        KitGUIHolder holder = new KitGUIHolder();
+        Inventory inv = Bukkit.createInventory(holder, size, TextUtil.parse("<dark_gray>Select a Combat Kit"));
+        holder.setInventory(inv);
+
+        // Fill background with subtle dark gray stained glass panes
+        ItemStack filler = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta fillerMeta = filler.getItemMeta();
+        if (fillerMeta != null) {
+            fillerMeta.displayName(Component.empty());
+            filler.setItemMeta(fillerMeta);
+        }
+
+        for (int i = 0; i < size; i++) {
+            inv.setItem(i, filler);
+        }
+
+        // Layout kits in centered or sequential slots
+        int[] displaySlots;
+        if (allKits.size() <= 5) {
+            displaySlots = new int[]{11, 12, 13, 14, 15};
+        } else if (allKits.size() <= 7) {
+            displaySlots = new int[]{10, 11, 12, 13, 14, 15, 16};
+        } else {
+            displaySlots = new int[]{10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25};
+        }
+
+        int slotIdx = 0;
+        for (Kit kit : allKits) {
+            if (slotIdx >= displaySlots.length) break;
+            int targetSlot = displaySlots[slotIdx++];
+
+            ItemStack item = kit.getIcon().clone();
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.displayName(TextUtil.parse(kit.getDisplayName()));
+
+                List<Component> lore = new ArrayList<>();
+                lore.add(TextUtil.parse("<dark_gray>──────────────────────────────</dark_gray>"));
+
+                KitRules rules = kit.getRules();
+                String modeName = rules.sumoMode() ? "<gradient:#FF55FF:#FFAAFF>Sumo Mode</gradient>"
+                        : (rules.comboMode() ? "<gradient:#00FFAA:#00AAFF>Combo (1.8 No-Delay)</gradient>"
+                        : "<yellow>Standard PvP</yellow>");
+                lore.add(TextUtil.parse("<gray>Combat Style: " + modeName));
+
+                String buildStatus = rules.allowBuild() ? "<green>Enabled</green>" : "<red>Disabled</red>";
+                lore.add(TextUtil.parse("<gray>Block Placement: " + buildStatus));
+
+                String hungerStatus = rules.allowHunger() ? "<green>Active</green>" : "<red>Disabled</red>";
+                lore.add(TextUtil.parse("<gray>Hunger Depletion: " + hungerStatus));
+
+                lore.add(TextUtil.parse("<dark_gray>──────────────────────────────</dark_gray>"));
+                lore.add(TextUtil.parse("<gold><bold>LEFT-CLICK</bold></gold> <yellow>» Queue Ranked Match</yellow>"));
+                lore.add(TextUtil.parse("<aqua><bold>RIGHT-CLICK</bold></aqua> <yellow>» Solo Bot Practice</yellow>"));
+
+                meta.lore(lore);
+                meta.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, kit.getId());
+                item.setItemMeta(meta);
+            }
+
+            inv.setItem(targetSlot, item);
+        }
+
+        player.openInventory(inv);
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getInventory().getHolder() instanceof KitGUIHolder) {
+            event.setCancelled(true);
+
+            if (!(event.getWhoClicked() instanceof Player player)) {
+                return;
+            }
+
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || clicked.getType().isAir()) {
+                return;
+            }
+
+            ItemMeta meta = clicked.getItemMeta();
+            if (meta == null) {
+                return;
+            }
+
+            String kitId = meta.getPersistentDataContainer().get(kitKey, PersistentDataType.STRING);
+            if (kitId == null) {
+                return;
+            }
+
+            Kit kit = plugin.getKitManager().getKit(kitId);
+            if (kit == null) {
+                return;
+            }
+
+            player.closeInventory();
+
+            if (event.isRightClick()) {
+                player.performCommand("practice " + kit.getId());
+            } else {
+                player.performCommand("queue " + kit.getId());
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getInventory().getHolder() instanceof KitGUIHolder) {
+            event.setCancelled(true);
+        }
+    }
+}

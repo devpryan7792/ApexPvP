@@ -64,6 +64,7 @@ public class DuelMatch extends Match {
             stats.incrementWins();
             stats.incrementKills();
             int streak = winnerProfile.incrementStreak();
+            winnerProfile.resetLossStreak();
             if (streak >= 3) {
                 broadcast("<gold>" + winnerProfile.getUsername() + "</gold> is on a <gradient:#FFAA00:#FF5555><bold>" + streak + "-MATCH WIN STREAK!</bold></gradient>");
             }
@@ -76,6 +77,7 @@ public class DuelMatch extends Match {
             stats.incrementLosses();
             stats.incrementDeaths();
             loserProfile.resetStreak();
+            loserProfile.incrementLossStreak();
             loserProfile.markDirty();
         }
 

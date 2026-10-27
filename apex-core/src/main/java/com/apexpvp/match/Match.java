@@ -75,6 +75,10 @@ public abstract class Match {
             Player player = Bukkit.getPlayer(participant.getUuid());
             if (player == null || !player.isOnline()) continue;
 
+            if (plugin.getLobbyBossBarManager() != null) {
+                plugin.getLobbyBossBarManager().hide(player);
+            }
+
             // 1. Immutable pre-match snapshot
             snapshots.put(player.getUniqueId(), new PlayerRestoreSnapshot(player));
 
@@ -279,6 +283,9 @@ public abstract class Match {
             Player p = Bukkit.getPlayer(entry.getKey());
             if (p != null && p.isOnline()) {
                 entry.getValue().restore(p);
+                if (plugin.getLobbyBossBarManager() != null) {
+                    plugin.getLobbyBossBarManager().update(p);
+                }
             } else {
                 plugin.getMatchManager().savePendingRestore(entry.getKey(), entry.getValue());
             }

@@ -79,6 +79,9 @@ public class RankupCommand implements CommandExecutor {
 
         // Apply Promotion
         profile.setRank(nextRank);
+        if (plugin.getLobbyBossBarManager() != null) {
+            plugin.getLobbyBossBarManager().update(player);
+        }
         TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>PROMOTION SUCCESSFUL!</bold></gradient> You advanced to " + nextRank.getMiniMessageDisplay() + "!");
         plugin.getServer().broadcast(TextUtil.prefixed("<gold>" + player.getName() + "</gold> promoted to " + nextRank.getMiniMessageDisplay() + "<reset>!"));
 

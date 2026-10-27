@@ -215,6 +215,51 @@ public class ArenaManager {
 
         plugin.getLogger().info("Generating platform for arena [" + instance.getInstanceIdentifier() + "] at Y=" + originY + "...");
 
+        String theme = instance.getTemplate().getId().toLowerCase();
+        Material edgeMat;
+        Material floorMat1;
+        Material floorMat2;
+        Material glassMat;
+
+        switch (theme) {
+            case "temple" -> {
+                edgeMat = Material.SMOOTH_QUARTZ;
+                floorMat1 = Material.QUARTZ_BRICKS;
+                floorMat2 = Material.SMOOTH_QUARTZ;
+                glassMat = Material.WHITE_STAINED_GLASS;
+            }
+            case "netherforge" -> {
+                edgeMat = Material.POLISHED_BLACKSTONE;
+                floorMat1 = Material.POLISHED_BLACKSTONE_BRICKS;
+                floorMat2 = Material.CRACKED_POLISHED_BLACKSTONE_BRICKS;
+                glassMat = Material.RED_STAINED_GLASS;
+            }
+            case "cybervoid" -> {
+                edgeMat = Material.OBSIDIAN;
+                floorMat1 = Material.PURPUR_BLOCK;
+                floorMat2 = Material.END_STONE_BRICKS;
+                glassMat = Material.CYAN_STAINED_GLASS;
+            }
+            case "desertdune" -> {
+                edgeMat = Material.CUT_SANDSTONE;
+                floorMat1 = Material.SMOOTH_SANDSTONE;
+                floorMat2 = Material.CHISELED_SANDSTONE;
+                glassMat = Material.ORANGE_STAINED_GLASS;
+            }
+            case "frostpeak" -> {
+                edgeMat = Material.BLUE_ICE;
+                floorMat1 = Material.PACKED_ICE;
+                floorMat2 = Material.SNOW_BLOCK;
+                glassMat = Material.LIGHT_BLUE_STAINED_GLASS;
+            }
+            default -> {
+                edgeMat = Material.STONE_BRICKS;
+                floorMat1 = Material.SMOOTH_STONE;
+                floorMat2 = Material.STONE;
+                glassMat = Material.TINTED_GLASS;
+            }
+        }
+
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 // Bedrock foundation beneath the floor to prevent breaking through
@@ -222,12 +267,12 @@ public class ArenaManager {
 
                 boolean isEdge = (x == minX || x == maxX || z == minZ || z == maxZ);
                 if (isEdge) {
-                    world.getBlockAt(x, originY, z).setType(Material.STONE_BRICKS, false);
+                    world.getBlockAt(x, originY, z).setType(edgeMat, false);
                     for (int y = originY + 1; y <= originY + 4; y++) {
-                        world.getBlockAt(x, y, z).setType(Material.TINTED_GLASS, false);
+                        world.getBlockAt(x, y, z).setType(glassMat, false);
                     }
                 } else {
-                    Material mat = ((x + z) % 2 == 0) ? Material.SMOOTH_STONE : Material.STONE;
+                    Material mat = ((x + z) % 2 == 0) ? floorMat1 : floorMat2;
                     world.getBlockAt(x, originY, z).setType(mat, false);
                     for (int y = originY + 1; y <= originY + 4; y++) {
                         world.getBlockAt(x, y, z).setType(Material.AIR, false);
@@ -328,6 +373,117 @@ public class ArenaManager {
     @NotNull
     public World getArenaWorld() {
         return arenaWorld;
+    }
+
+    public int getNextAvailableTemplateId() {
+        int maxId = 0;
+        for (ArenaTemplate template : templates.values()) {
+            if (template.getTemplateId() > maxId) {
+                maxId = template.getTemplateId();
+            }
+        }
+        return maxId + 1;
+    }
+
+    public boolean createTemplate(@NotNull String id, @NotNull String displayName, @NotNull ArenaBounds bounds,
+                                  @NotNull ArenaTemplate.SpawnPoint spawnA,
+                                  @NotNull ArenaTemplate.SpawnPoint spawnB,
+                                  @NotNull ArenaTemplate.SpawnPoint specSpawn) {
+        String key = id.toLowerCase();
+        if (templates.containsKey(key)) {
+            return false;
+        }
+
+        int nextId = getNextAvailableTemplateId();
+        ArenaTemplate template = new ArenaTemplate(
+                nextId, key, displayName, bounds, spawnA, spawnB, specSpawn,
+                true, true, 64, 84, key + ".schem"
+        );
+
+        templates.put(key, template);
+        instances.put(key, new CopyOnWriteArrayList<>());
+        allocateInitialInstance(template);
+        saveTemplateToConfig(template);
+        return true;
+    }
+
+    public boolean updateSpawnA(@NotNull String templateId, @NotNull ArenaTemplate.SpawnPoint spawnA) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withSpawnA(spawnA);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean updateSpawnB(@NotNull String templateId, @NotNull ArenaTemplate.SpawnPoint spawnB) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withSpawnB(spawnB);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean updateSpectatorSpawn(@NotNull String templateId, @NotNull ArenaTemplate.SpawnPoint specSpawn) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withSpectatorSpawn(specSpawn);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public void saveTemplateToConfig(@NotNull ArenaTemplate template) {
+        File arenasFile = new File(plugin.getDataFolder(), "arenas.yml");
+        FileConfiguration config = YamlConfiguration.loadConfiguration(arenasFile);
+        String path = "templates." + template.getId();
+
+        config.set(path + ".template-id", template.getTemplateId());
+        config.set(path + ".display-name", template.getDisplayName());
+
+        ArenaBounds b = template.getRelativeBounds();
+        config.set(path + ".bounds.min-x", b.getMinX());
+        config.set(path + ".bounds.min-y", b.getMinY());
+        config.set(path + ".bounds.min-z", b.getMinZ());
+        config.set(path + ".bounds.max-x", b.getMaxX());
+        config.set(path + ".bounds.max-y", b.getMaxY());
+        config.set(path + ".bounds.max-z", b.getMaxZ());
+
+        ArenaTemplate.SpawnPoint sa = template.getRelativeSpawnA();
+        config.set(path + ".spawns.spawn-a.x", sa.x());
+        config.set(path + ".spawns.spawn-a.y", sa.y());
+        config.set(path + ".spawns.spawn-a.z", sa.z());
+        config.set(path + ".spawns.spawn-a.yaw", sa.yaw());
+        config.set(path + ".spawns.spawn-a.pitch", sa.pitch());
+
+        ArenaTemplate.SpawnPoint sb = template.getRelativeSpawnB();
+        config.set(path + ".spawns.spawn-b.x", sb.x());
+        config.set(path + ".spawns.spawn-b.y", sb.y());
+        config.set(path + ".spawns.spawn-b.z", sb.z());
+        config.set(path + ".spawns.spawn-b.yaw", sb.yaw());
+        config.set(path + ".spawns.spawn-b.pitch", sb.pitch());
+
+        ArenaTemplate.SpawnPoint spec = template.getRelativeSpectatorSpawn();
+        config.set(path + ".spawns.spectator.x", spec.x());
+        config.set(path + ".spawns.spectator.y", spec.y());
+        config.set(path + ".spawns.spectator.z", spec.z());
+        config.set(path + ".spawns.spectator.yaw", spec.yaw());
+        config.set(path + ".spawns.spectator.pitch", spec.pitch());
+
+        config.set(path + ".rules.allow-build", template.isAllowBuild());
+        config.set(path + ".rules.allow-block-break", template.isAllowBlockBreak());
+        config.set(path + ".rules.min-build-y", template.getMinBuildY());
+        config.set(path + ".rules.max-build-y", template.getMaxBuildY());
+        if (template.getSchematicFile() != null) {
+            config.set(path + ".schematic", template.getSchematicFile());
+        }
+
+        try {
+            config.save(arenasFile);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save arena template " + template.getId() + " to arenas.yml", e);
+        }
     }
 
     public void shutdown() {

@@ -24,6 +24,8 @@ public class PlayerProfile {
 
     private final AtomicInteger currentStreak;
     private final AtomicInteger bestStreak;
+    private final AtomicInteger currentLossStreak;
+    private final AtomicInteger worstLossStreak;
 
     private final Map<String, PlayerStats> kitStats;
     private final Map<String, String> customHotbars;
@@ -31,7 +33,7 @@ public class PlayerProfile {
     private final AtomicBoolean dirty;
 
     public PlayerProfile(@NotNull UUID uuid, @NotNull String username) {
-        this(uuid, username, Rank.COPPER_1, 800, 0.0, 0, 0);
+        this(uuid, username, Rank.COPPER_1, 800, 0.0, 0, 0, 0, 0);
     }
 
     public PlayerProfile(@NotNull UUID uuid,
@@ -39,7 +41,7 @@ public class PlayerProfile {
                          @NotNull Rank rank,
                          int elo,
                          double coins) {
-        this(uuid, username, rank, elo, coins, 0, 0);
+        this(uuid, username, rank, elo, coins, 0, 0, 0, 0);
     }
 
     public PlayerProfile(@NotNull UUID uuid,
@@ -49,6 +51,18 @@ public class PlayerProfile {
                          double coins,
                          int currentStreak,
                          int bestStreak) {
+        this(uuid, username, rank, elo, coins, currentStreak, bestStreak, 0, 0);
+    }
+
+    public PlayerProfile(@NotNull UUID uuid,
+                         @NotNull String username,
+                         @NotNull Rank rank,
+                         int elo,
+                         double coins,
+                         int currentStreak,
+                         int bestStreak,
+                         int currentLossStreak,
+                         int worstLossStreak) {
         this.uuid = Objects.requireNonNull(uuid, "uuid cannot be null");
         this.username = Objects.requireNonNull(username, "username cannot be null");
         this.rank = Objects.requireNonNull(rank, "rank cannot be null");
@@ -56,6 +70,8 @@ public class PlayerProfile {
         this.coins = Math.max(0.0, coins);
         this.currentStreak = new AtomicInteger(Math.max(0, currentStreak));
         this.bestStreak = new AtomicInteger(Math.max(this.currentStreak.get(), bestStreak));
+        this.currentLossStreak = new AtomicInteger(Math.max(0, currentLossStreak));
+        this.worstLossStreak = new AtomicInteger(Math.max(this.currentLossStreak.get(), worstLossStreak));
 
         this.kitStats = new ConcurrentHashMap<>();
         this.customHotbars = new ConcurrentHashMap<>();
@@ -145,6 +161,26 @@ public class PlayerProfile {
 
     public void resetStreak() {
         currentStreak.set(0);
+        markDirty();
+    }
+
+    public int getCurrentLossStreak() {
+        return currentLossStreak.get();
+    }
+
+    public int getWorstLossStreak() {
+        return worstLossStreak.get();
+    }
+
+    public int incrementLossStreak() {
+        int newLossStreak = currentLossStreak.incrementAndGet();
+        worstLossStreak.accumulateAndGet(newLossStreak, Math::max);
+        markDirty();
+        return newLossStreak;
+    }
+
+    public void resetLossStreak() {
+        currentLossStreak.set(0);
         markDirty();
     }
 

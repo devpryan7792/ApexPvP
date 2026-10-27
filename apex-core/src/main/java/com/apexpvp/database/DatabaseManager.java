@@ -129,6 +129,8 @@ public class DatabaseManager {
     private void migrateColumns(@NotNull Statement statement) {
         try { statement.execute("ALTER TABLE apex_players ADD COLUMN current_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
         try { statement.execute("ALTER TABLE apex_players ADD COLUMN best_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
+        try { statement.execute("ALTER TABLE apex_players ADD COLUMN loss_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
+        try { statement.execute("ALTER TABLE apex_players ADD COLUMN worst_loss_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
     }
 
     @NotNull

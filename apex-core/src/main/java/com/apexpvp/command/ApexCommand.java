@@ -55,6 +55,9 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
             case "simduel" -> {
                 return handleSimDuel(sender, args);
             }
+            case "arena" -> {
+                return handleArena(sender, args);
+            }
             case "eco" -> {
                 return handleEco(sender, args);
             }
@@ -240,8 +243,155 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleArena(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("apexpvp.admin")) {
+            sender.sendMessage(TextUtil.parse("<red>You do not have permission to manage arenas."));
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(TextUtil.parse("<dark_gray>----------------- <gradient:#00FFAA:#00AAFF><bold>ARENA MANAGEMENT</bold></gradient> <dark_gray>-----------------"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena list <gray>- List all arena templates and instances"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena create <id> [displayName] <gray>- Create new arena template"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena dupe <id> <gray>- Dupe/allocate dynamic grid instance"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena tp <id> [instanceIndex] <gray>- Teleport to arena instance"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena setspawnA <id> <gray>- Set Spawn A location"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena setspawnB <id> <gray>- Set Spawn B location"));
+            sender.sendMessage(TextUtil.parse("<gold>/apex arena setspec <id> <gray>- Set Spectator spawn location"));
+            sender.sendMessage(TextUtil.parse("<dark_gray>--------------------------------------------------"));
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        switch (action) {
+            case "list" -> {
+                sender.sendMessage(TextUtil.parse("<dark_gray>================= <gradient:#00FFAA:#00AAFF><bold>ARENA TEMPLATES</bold></gradient> <dark_gray>================="));
+                for (ArenaTemplate template : plugin.getArenaManager().getAllTemplates()) {
+                    List<ArenaInstance> instList = plugin.getArenaManager().getInstances(template.getId());
+                    long available = instList.stream().filter(i -> i.getState() == com.apexpvp.arena.ArenaState.AVAILABLE).count();
+                    sender.sendMessage(TextUtil.parse(" <dark_gray>»</dark_gray> <yellow>" + template.getId() + "</yellow> (TID: " + template.getTemplateId() + "): "
+                            + template.getDisplayName() + " <gray>• Instances: <green>" + available + "</green>/<aqua>" + instList.size() + " available</gray>"));
+                }
+                sender.sendMessage(TextUtil.parse("<gray>Total instances across grid: <green>" + plugin.getArenaManager().getTotalInstanceCount() + "</green>"));
+                sender.sendMessage(TextUtil.parse("<dark_gray>=================================================="));
+                return true;
+            }
+            case "create" -> {
+                if (args.length < 3) {
+                    TextUtil.sendPrefixed(sender, "<red>Usage: /apex arena create <id> [displayName]");
+                    return true;
+                }
+                String id = args[2].toLowerCase();
+                String displayName = args.length >= 4 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length)) : "<gradient:#FFAA00:#FF5555>" + id.substring(0, 1).toUpperCase() + id.substring(1) + "</gradient>";
+                com.apexpvp.arena.ArenaBounds bounds = new com.apexpvp.arena.ArenaBounds(-30, 0, -30, 30, 40, 30);
+                ArenaTemplate.SpawnPoint spawnA = new ArenaTemplate.SpawnPoint(-18.5, 1.0, 0.5, -90.0f, 0.0f);
+                ArenaTemplate.SpawnPoint spawnB = new ArenaTemplate.SpawnPoint(18.5, 1.0, 0.5, 90.0f, 0.0f);
+                ArenaTemplate.SpawnPoint spec = new ArenaTemplate.SpawnPoint(0.5, 15.0, 0.5, 0.0f, 45.0f);
+
+                boolean created = plugin.getArenaManager().createTemplate(id, displayName, bounds, spawnA, spawnB, spec);
+                if (created) {
+                    TextUtil.sendPrefixed(sender, "<green>Created arena template <yellow>" + id + "</yellow> with default grid platform!");
+                } else {
+                    TextUtil.sendPrefixed(sender, "<red>Arena template '" + id + "' already exists!");
+                }
+                return true;
+            }
+            case "dupe" -> {
+                if (args.length < 3) {
+                    TextUtil.sendPrefixed(sender, "<red>Usage: /apex arena dupe <templateId>");
+                    return true;
+                }
+                String id = args[2].toLowerCase();
+                ArenaTemplate template = plugin.getArenaManager().getTemplate(id);
+                if (template == null) {
+                    TextUtil.sendPrefixed(sender, "<red>Unknown arena template: " + id);
+                    return true;
+                }
+                ArenaInstance dynamic = plugin.getArenaManager().allocateDynamicInstance(template);
+                TextUtil.sendPrefixed(sender, "<green>Duplicated arena <yellow>" + template.getId() + "</yellow> -> Dynamic Instance <aqua>#"
+                        + dynamic.getInstanceIndex() + "</aqua> at grid origin <gold>(" + dynamic.getOriginX() + ", 64, " + dynamic.getOriginZ() + ")</gold>.");
+                return true;
+            }
+            case "tp" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only players can teleport to arenas."));
+                    return true;
+                }
+                if (args.length < 3) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /apex arena tp <templateId> [instanceIndex]");
+                    return true;
+                }
+                String id = args[2].toLowerCase();
+                ArenaTemplate template = plugin.getArenaManager().getTemplate(id);
+                if (template == null) {
+                    TextUtil.sendPrefixed(player, "<red>Unknown arena template: " + id);
+                    return true;
+                }
+                int index = 0;
+                if (args.length >= 4) {
+                    try { index = Integer.parseInt(args[3]); } catch (NumberFormatException ignored) {}
+                }
+                List<ArenaInstance> list = plugin.getArenaManager().getInstances(template.getId());
+                if (list.isEmpty()) {
+                    TextUtil.sendPrefixed(player, "<red>No instances allocated for template: " + id);
+                    return true;
+                }
+                if (index < 0 || index >= list.size()) {
+                    TextUtil.sendPrefixed(player, "<red>Invalid instance index. Range: 0 to " + (list.size() - 1));
+                    return true;
+                }
+                ArenaInstance targetInst = list.get(index);
+                player.teleport(targetInst.getSpectatorSpawn());
+                TextUtil.sendPrefixed(player, "<green>Teleported to <yellow>" + targetInst.getInstanceIdentifier() + "</yellow> at Spectator Spawn.");
+                return true;
+            }
+            case "setspawna", "setspawnb", "setspec" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only players can set spawn locations."));
+                    return true;
+                }
+                if (args.length < 3) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /apex arena " + action + " <templateId>");
+                    return true;
+                }
+                String id = args[2].toLowerCase();
+                ArenaTemplate template = plugin.getArenaManager().getTemplate(id);
+                if (template == null) {
+                    TextUtil.sendPrefixed(player, "<red>Unknown arena template: " + id);
+                    return true;
+                }
+
+                org.bukkit.Location loc = player.getLocation();
+                int originX = template.getTemplateId() * 1000;
+                int originY = 64;
+                int originZ = 0;
+                double relX = loc.getX() - originX;
+                double relY = loc.getY() - originY;
+                double relZ = loc.getZ() - originZ;
+                ArenaTemplate.SpawnPoint sp = new ArenaTemplate.SpawnPoint(relX, relY, relZ, loc.getYaw(), loc.getPitch());
+
+                if (action.equals("setspawna")) {
+                    plugin.getArenaManager().updateSpawnA(id, sp);
+                    TextUtil.sendPrefixed(player, "<green>Spawn A updated for <yellow>" + id + "</yellow> at relative (" + String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                } else if (action.equals("setspawnb")) {
+                    plugin.getArenaManager().updateSpawnB(id, sp);
+                    TextUtil.sendPrefixed(player, "<green>Spawn B updated for <yellow>" + id + "</yellow> at relative (" + String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                } else {
+                    plugin.getArenaManager().updateSpectatorSpawn(id, sp);
+                    TextUtil.sendPrefixed(player, "<green>Spectator spawn updated for <yellow>" + id + "</yellow> at relative (" + String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                }
+                return true;
+            }
+            default -> {
+                TextUtil.sendPrefixed(sender, "<red>Unknown arena subcommand. Use /apex arena for help.");
+                return true;
+            }
+        }
+    }
+
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(TextUtil.parse("<dark_gray>----------------- <gradient:#00FFAA:#00AAFF><bold>APEXPVP COMMANDS</bold></gradient> <dark_gray>-----------------"));
+        sender.sendMessage(TextUtil.parse("<gold>/apex arena <list|create|dupe|tp|setspawnA|setspawnB|setspec> <gray>- Arena grid manager"));
         sender.sendMessage(TextUtil.parse("<gold>/apex simduel <kit> [difficulty] [stake] <gray>- Solo 2-player combat simulation"));
         sender.sendMessage(TextUtil.parse("<gold>/apex eco <give|take|set> <player> <amount> <gray>- Administrative economy management"));
         sender.sendMessage(TextUtil.parse("<gold>/apex reload <gray>- Reload configuration files"));
@@ -257,12 +407,20 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                                                 @NotNull String label,
                                                 @NotNull String[] args) {
         if (args.length == 1) {
-            List<String> list = new ArrayList<>(Arrays.asList("simduel", "eco", "reload", "help"));
+            List<String> list = new ArrayList<>(Arrays.asList("arena", "simduel", "eco", "reload", "help"));
             return list;
         }
 
         String sub = args[0].toLowerCase();
-        if (sub.equals("simduel")) {
+        if (sub.equals("arena")) {
+            if (args.length == 2) {
+                return Arrays.asList("list", "create", "dupe", "tp", "setspawnA", "setspawnB", "setspec");
+            } else if (args.length == 3) {
+                List<String> tList = new ArrayList<>();
+                for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) tList.add(t.getId());
+                return tList;
+            }
+        } else if (sub.equals("simduel")) {
             if (args.length == 2) {
                 List<String> kits = new ArrayList<>();
                 for (Kit k : plugin.getKitManager().getAllKits()) kits.add(k.getId());

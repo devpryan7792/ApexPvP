@@ -41,6 +41,8 @@ public final class DatabaseSchema {
                 coins %s NOT NULL DEFAULT 0.0,
                 current_streak INT NOT NULL DEFAULT 0,
                 best_streak INT NOT NULL DEFAULT 0,
+                loss_streak INT NOT NULL DEFAULT 0,
+                worst_loss_streak INT NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen %s
             );

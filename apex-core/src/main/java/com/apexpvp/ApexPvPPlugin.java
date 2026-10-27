@@ -11,6 +11,7 @@ import com.apexpvp.util.TextUtil;
 import com.apexpvp.command.ApexCommand;
 import com.apexpvp.command.BetCommand;
 import com.apexpvp.command.DuelCommand;
+import com.apexpvp.command.KitCommand;
 import com.apexpvp.command.LeaderboardCommand;
 import com.apexpvp.command.PartyCommand;
 import com.apexpvp.command.PracticeCommand;
@@ -25,6 +26,8 @@ import com.apexpvp.integration.proxy.VelocityReporter;
 import com.apexpvp.leaderboard.LeaderboardManager;
 import com.apexpvp.party.PartyManager;
 import com.apexpvp.queue.QueueManager;
+import com.apexpvp.ui.bossbar.LobbyBossBarManager;
+import com.apexpvp.ui.gui.KitGUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -56,6 +59,8 @@ public class ApexPvPPlugin extends JavaPlugin {
     private Economy economy;
     private LeaderboardManager leaderboardManager;
     private BettingManager bettingManager;
+    private KitGUI kitGUI;
+    private LobbyBossBarManager lobbyBossBarManager;
 
     private boolean citizensAvailable;
     private boolean faweAvailable;
@@ -96,15 +101,21 @@ public class ApexPvPPlugin extends JavaPlugin {
         this.arenaManager = new ArenaManager(this);
         this.arenaManager.initialize();
 
-        // 5. Initialize Multi-Kit Engine
+        // 5. Initialize Multi-Kit Engine and Kit Selection GUI
         this.kitManager = new KitManager(this);
         this.kitManager.initialize();
+        this.kitGUI = new KitGUI(this);
+        getServer().getPluginManager().registerEvents(kitGUI, this);
 
-        // 6. Initialize Match Lifecycle Engine
+        // 6. Initialize Lobby BossBar Manager
+        this.lobbyBossBarManager = new LobbyBossBarManager(this);
+        this.lobbyBossBarManager.start();
+
+        // 7. Initialize Match Lifecycle Engine
         this.matchManager = new MatchManager(this);
         getServer().getPluginManager().registerEvents(new MatchListener(matchManager), this);
 
-        // 7. Initialize Escrow, Queue, Duels, and Party Systems
+        // 8. Initialize Escrow, Queue, Duels, and Party Systems
         this.escrowManager = new EscrowManager(this);
         this.queueManager = new QueueManager(this);
         this.queueManager.start();
@@ -113,17 +124,17 @@ public class ApexPvPPlugin extends JavaPlugin {
         this.leaderboardManager = new LeaderboardManager(this);
         this.bettingManager = new BettingManager(this);
 
-        // 8. Register Commands
+        // 9. Register Commands
         registerCommands();
 
-        // 9. Velocity Proxy Heartbeat Bridge
+        // 10. Velocity Proxy Heartbeat Bridge
         if (getConfig().getBoolean("proxy.velocity-support", false)) {
             this.velocityReporter = new VelocityReporter(this);
             this.velocityReporter.start();
             getLogger().info("Started Velocity proxy capacity reporting on channel " + VelocityReporter.CHANNEL);
         }
 
-        // 10. Inspect External Integrations (Strict Citizens Requirement)
+        // 11. Inspect External Integrations (Strict Citizens Requirement)
         verifyDependencies();
 
         getLogger().info("=================================================");
@@ -141,6 +152,11 @@ public class ApexPvPPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         getLogger().info("Initiating ApexPvP graceful shutdown...");
+
+        // 0. Stop Lobby BossBar Manager
+        if (lobbyBossBarManager != null) {
+            lobbyBossBarManager.stop();
+        }
 
         // 1. Stop Velocity reporter
         if (velocityReporter != null) {
@@ -258,6 +274,11 @@ public class ApexPvPPlugin extends JavaPlugin {
             getCommand("bet").setExecutor(betCmd);
             getCommand("bet").setTabCompleter(betCmd);
         }
+        if (getCommand("kits") != null) {
+            KitCommand kitCmd = new KitCommand(this, kitGUI);
+            getCommand("kits").setExecutor(kitCmd);
+            getCommand("kits").setTabCompleter(kitCmd);
+        }
     }
 
     @NotNull
@@ -340,5 +361,15 @@ public class ApexPvPPlugin extends JavaPlugin {
     @Nullable
     public BettingManager getBettingManager() {
         return bettingManager;
+    }
+
+    @NotNull
+    public KitGUI getKitGUI() {
+        return kitGUI;
+    }
+
+    @NotNull
+    public LobbyBossBarManager getLobbyBossBarManager() {
+        return lobbyBossBarManager;
     }
 }

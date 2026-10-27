@@ -113,4 +113,19 @@ public class ArenaTemplate {
     public String getSchematicFile() {
         return schematicFile;
     }
+
+    @NotNull
+    public ArenaTemplate withSpawnA(@NotNull SpawnPoint newSpawnA) {
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, newSpawnA, relativeSpawnB, relativeSpectatorSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile);
+    }
+
+    @NotNull
+    public ArenaTemplate withSpawnB(@NotNull SpawnPoint newSpawnB) {
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, newSpawnB, relativeSpectatorSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile);
+    }
+
+    @NotNull
+    public ArenaTemplate withSpectatorSpawn(@NotNull SpawnPoint newSpec) {
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, newSpec, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile);
+    }
 }

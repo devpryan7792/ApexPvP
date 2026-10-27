@@ -103,8 +103,10 @@ public class ApexExpansion extends PlaceholderExpansion {
                 if (deaths == 0) yield String.valueOf(kills);
                 yield String.format("%.2f", (double) kills / deaths);
             }
-            case "streak", "current_streak" -> String.valueOf(profile.getCurrentStreak());
-            case "best_streak" -> String.valueOf(profile.getBestStreak());
+            case "streak", "current_streak", "win_streak" -> String.valueOf(profile.getCurrentStreak());
+            case "best_streak", "best_win_streak" -> String.valueOf(profile.getBestStreak());
+            case "loss_streak", "current_loss_streak" -> String.valueOf(profile.getCurrentLossStreak());
+            case "worst_loss_streak" -> String.valueOf(profile.getWorstLossStreak());
             case "streak_multiplier" -> String.format("%.2f", profile.getStreakMultiplier());
             default -> null;
         };

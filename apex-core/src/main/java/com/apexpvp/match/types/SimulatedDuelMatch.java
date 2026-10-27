@@ -117,6 +117,7 @@ public class SimulatedDuelMatch extends Match {
                 stats.incrementKills();
 
                 int streak = profile.incrementStreak();
+                profile.resetLossStreak();
                 if (streak >= 3) {
                     broadcast("<gold>" + profile.getUsername() + "</gold> is on a <gradient:#FFAA00:#FF5555><bold>"
                             + streak + "-MATCH WIN STREAK!</bold></gradient>");
@@ -168,6 +169,7 @@ public class SimulatedDuelMatch extends Match {
                 stats.incrementDeaths();
 
                 profile.resetStreak();
+                profile.incrementLossStreak();
                 profile.markDirty();
 
                 if (player != null) {
