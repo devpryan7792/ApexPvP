@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.apexpvp.leaderboard.LeaderboardTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-27T17:43:01" hostname="asustuf" time="0.159">
-  <properties/>
-  <testcase name="Verify LeaderboardEntry record properties" classname="com.apexpvp.leaderboard.LeaderboardTest" time="0.152"/>
-  <testcase name="Verify LeaderboardManager 60-second TTL in-memory caching" classname="com.apexpvp.leaderboard.LeaderboardTest" time="0.007"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
