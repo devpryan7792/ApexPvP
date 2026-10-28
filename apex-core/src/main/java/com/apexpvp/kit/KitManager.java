@@ -1,11 +1,17 @@
 package com.apexpvp.kit;
 
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionType;
+import com.apexpvp.util.TextUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -100,20 +106,156 @@ public class KitManager {
     }
 
     @Nullable
-    private ItemStack parseItem(@Nullable String raw) {
+    public static ItemStack parseItem(@Nullable String raw) {
         if (raw == null || raw.isBlank()) return null;
         String[] parts = raw.split(":");
         Material mat = Material.matchMaterial(parts[0].trim());
         if (mat == null) return null;
 
         int amount = 1;
-        if (parts.length > 1) {
+        String metaStr = null;
+
+        if (parts.length == 2) {
+            if (parts[1].contains("=")) {
+                metaStr = parts[1].trim();
+            } else {
+                try {
+                    amount = Math.max(1, Integer.parseInt(parts[1].trim()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        } else if (parts.length >= 3) {
             try {
                 amount = Math.max(1, Integer.parseInt(parts[1].trim()));
-            } catch (NumberFormatException ignored) {
+                StringBuilder rest = new StringBuilder();
+                for (int i = 2; i < parts.length; i++) {
+                    if (!rest.isEmpty()) rest.append(":");
+                    rest.append(parts[i]);
+                }
+                metaStr = rest.toString().trim();
+            } catch (NumberFormatException ex) {
+                StringBuilder rest = new StringBuilder();
+                for (int i = 1; i < parts.length; i++) {
+                    if (!rest.isEmpty()) rest.append(":");
+                    rest.append(parts[i]);
+                }
+                metaStr = rest.toString().trim();
             }
         }
-        return new ItemStack(mat, amount);
+
+        ItemStack item = new ItemStack(mat, amount);
+        if (metaStr != null && !metaStr.isBlank()) {
+            applyMetadata(item, metaStr);
+        }
+        return item;
+    }
+
+    private static void applyMetadata(@NotNull ItemStack item, @NotNull String metaStr) {
+        String[] tokens = metaStr.split(";");
+        for (String token : tokens) {
+            int eq = token.indexOf('=');
+            if (eq == -1) continue;
+            String key = token.substring(0, eq).trim().toUpperCase();
+            String val = token.substring(eq + 1).trim();
+
+            switch (key) {
+                case "POTION" -> {
+                    try {
+                        if (item.getItemMeta() instanceof PotionMeta pm) {
+                            PotionType pt = resolvePotionType(val);
+                            if (pt != null) {
+                                pm.setBasePotionType(pt);
+                                item.setItemMeta(pm);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
+                case "ENCHANTS" -> {
+                    String[] enchPairs = val.split(",");
+                    for (String pair : enchPairs) {
+                        String[] kv = pair.split("=");
+                        if (kv.length == 2) {
+                            Enchantment ench = resolveEnchantment(kv[0].trim());
+                            if (ench != null) {
+                                try {
+                                    int lvl = Integer.parseInt(kv[1].trim());
+                                    item.addUnsafeEnchantment(ench, lvl);
+                                } catch (Throwable ignored) {
+                                }
+                            }
+                        }
+                    }
+                }
+                case "NAME" -> {
+                    try {
+                        ItemMeta im = item.getItemMeta();
+                        if (im != null) {
+                            im.displayName(TextUtil.parse(val));
+                            item.setItemMeta(im);
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+    }
+
+    @Nullable
+    public static PotionType resolvePotionType(@NotNull String name) {
+        String clean = name.trim().toUpperCase();
+        try {
+            return PotionType.valueOf(clean);
+        } catch (IllegalArgumentException ignored) {
+        }
+        return switch (clean) {
+            case "HEAL", "HEALING_2", "HEAL_2", "INSTANT_HEAL", "INSTANT_HEAL_2" -> PotionType.STRONG_HEALING;
+            case "SPEED", "SPEED_2", "SWIFTNESS_2" -> PotionType.STRONG_SWIFTNESS;
+            case "FIRE_RES", "FIRE_RESISTANCE_LONG", "FIRE_RES_8" -> PotionType.LONG_FIRE_RESISTANCE;
+            case "STRENGTH_2" -> PotionType.STRONG_STRENGTH;
+            case "POISON_2" -> PotionType.STRONG_POISON;
+            case "SLOWNESS_2" -> PotionType.STRONG_SLOWNESS;
+            default -> null;
+        };
+    }
+
+    @Nullable
+    public static Enchantment resolveEnchantment(@NotNull String name) {
+        try {
+            String clean = name.trim().toLowerCase();
+            try {
+                Enchantment ench = Enchantment.getByKey(NamespacedKey.minecraft(clean));
+                if (ench != null) return ench;
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                Enchantment ench = Enchantment.getByName(name.trim().toUpperCase());
+                if (ench != null) return ench;
+            } catch (Throwable ignored) {
+            }
+
+            return switch (clean) {
+                case "sharpness", "sharp" -> Enchantment.getByKey(NamespacedKey.minecraft("sharpness"));
+                case "fire_aspect", "fire" -> Enchantment.getByKey(NamespacedKey.minecraft("fire_aspect"));
+                case "unbreaking", "unb" -> Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"));
+                case "knockback", "kb" -> Enchantment.getByKey(NamespacedKey.minecraft("knockback"));
+                case "protection", "prot" -> Enchantment.getByKey(NamespacedKey.minecraft("protection"));
+                case "feather_falling", "feather" -> Enchantment.getByKey(NamespacedKey.minecraft("feather_falling"));
+                case "respiration" -> Enchantment.getByKey(NamespacedKey.minecraft("respiration"));
+                case "aqua_affinity" -> Enchantment.getByKey(NamespacedKey.minecraft("aqua_affinity"));
+                case "thorns" -> Enchantment.getByKey(NamespacedKey.minecraft("thorns"));
+                case "depth_strider" -> Enchantment.getByKey(NamespacedKey.minecraft("depth_strider"));
+                case "power" -> Enchantment.getByKey(NamespacedKey.minecraft("power"));
+                case "punch" -> Enchantment.getByKey(NamespacedKey.minecraft("punch"));
+                case "flame" -> Enchantment.getByKey(NamespacedKey.minecraft("flame"));
+                case "infinity" -> Enchantment.getByKey(NamespacedKey.minecraft("infinity"));
+                case "efficiency", "eff" -> Enchantment.getByKey(NamespacedKey.minecraft("efficiency"));
+                default -> null;
+            };
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     @Nullable
@@ -138,14 +280,37 @@ public class KitManager {
         ItemStack[] main = new ItemStack[36];
         System.arraycopy(contents, 0, main, 0, Math.min(contents.length, 36));
 
-        ItemStack icon = (main[0] != null && !main[0].getType().isAir())
-                ? new ItemStack(main[0].getType())
+        ItemStack icon = (!isAir(main[0]))
+                ? main[0].clone()
                 : new ItemStack(Material.DIAMOND_SWORD);
 
         KitRules rules = new KitRules(false, true, false, false);
         Kit kit = new Kit(key, displayName, icon, main, armor, offhand, Collections.emptyList(), rules);
         registerKit(kit);
         saveKitToConfig(kit);
+        return true;
+    }
+
+    public boolean updateKitFromPlayer(@NotNull String kitId, @NotNull org.bukkit.entity.Player player) {
+        String key = kitId.toLowerCase();
+        Kit existing = kits.get(key);
+        if (existing == null) {
+            return false;
+        }
+
+        ItemStack[] armor = player.getInventory().getArmorContents();
+        ItemStack offhand = player.getInventory().getItemInOffHand();
+        ItemStack[] contents = player.getInventory().getContents();
+        ItemStack[] main = new ItemStack[36];
+        System.arraycopy(contents, 0, main, 0, Math.min(contents.length, 36));
+
+        ItemStack icon = (!isAir(main[0]))
+                ? main[0].clone()
+                : existing.getIcon();
+
+        Kit updated = new Kit(key, existing.getDisplayName(), icon, main, armor, offhand, existing.getPotionEffects(), existing.getRules());
+        registerKit(updated);
+        saveKitToConfig(updated);
         return true;
     }
 
@@ -207,12 +372,55 @@ public class KitManager {
         }
     }
 
+    private static boolean isAir(@Nullable ItemStack item) {
+        if (item == null) return true;
+        Material mat = item.getType();
+        return mat == Material.AIR || mat == Material.CAVE_AIR || mat == Material.VOID_AIR;
+    }
+
     @Nullable
-    private String serializeItem(@Nullable ItemStack item) {
-        if (item == null || item.getType().isAir()) return null;
-        if (item.getAmount() > 1) {
-            return item.getType().name() + ":" + item.getAmount();
+    public static String serializeItem(@Nullable ItemStack item) {
+        if (isAir(item)) return null;
+        StringBuilder sb = new StringBuilder();
+        sb.append(item.getType().name());
+
+        int amount = item.getAmount();
+        List<String> metaTokens = new ArrayList<>();
+
+        try {
+            ItemMeta meta = item.getItemMeta();
+            if (meta instanceof PotionMeta pm) {
+                PotionType pt = pm.getBasePotionType();
+                if (pt != null && pt != PotionType.WATER) {
+                    metaTokens.add("POTION=" + pt.name());
+                }
+            }
+
+            if (meta != null && meta.hasEnchants()) {
+                Map<Enchantment, Integer> enchants = meta.getEnchants();
+                List<String> enchEntries = new ArrayList<>();
+                for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
+                    String enchKey;
+                    try {
+                        enchKey = entry.getKey().getKey().getKey();
+                    } catch (Throwable t) {
+                        enchKey = entry.getKey().getName().toLowerCase();
+                    }
+                    enchEntries.add(enchKey + "=" + entry.getValue());
+                }
+                if (!enchEntries.isEmpty()) {
+                    metaTokens.add("ENCHANTS=" + String.join(",", enchEntries));
+                }
+            }
+        } catch (Throwable ignored) {
         }
-        return item.getType().name();
+
+        if (!metaTokens.isEmpty()) {
+            sb.append(":").append(amount).append(":").append(String.join(";", metaTokens));
+        } else if (amount > 1) {
+            sb.append(":").append(amount);
+        }
+
+        return sb.toString();
     }
 }

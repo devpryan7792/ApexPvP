@@ -110,6 +110,7 @@ public class KitGUI implements Listener {
                 lore.add(TextUtil.parse("<dark_gray>──────────────────────────────</dark_gray>"));
                 lore.add(TextUtil.parse("<gold><bold>LEFT-CLICK</bold></gold> <yellow>» Queue Ranked Match</yellow>"));
                 lore.add(TextUtil.parse("<aqua><bold>RIGHT-CLICK</bold></aqua> <yellow>» Solo Bot Practice</yellow>"));
+                lore.add(TextUtil.parse("<yellow><bold>SHIFT-CLICK</bold></yellow> <gray>» Customize Hotbar Layout</gray>"));
 
                 meta.lore(lore);
                 meta.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, kit.getId());
@@ -132,7 +133,7 @@ public class KitGUI implements Listener {
             }
 
             ItemStack clicked = event.getCurrentItem();
-            if (clicked == null || clicked.getType().isAir()) {
+            if (clicked == null || clicked.getType() == Material.AIR || clicked.getType() == Material.CAVE_AIR || clicked.getType() == Material.VOID_AIR) {
                 return;
             }
 
@@ -148,6 +149,11 @@ public class KitGUI implements Listener {
 
             Kit kit = plugin.getKitManager().getKit(kitId);
             if (kit == null) {
+                return;
+            }
+
+            if (event.isShiftClick() || event.getClick() == org.bukkit.event.inventory.ClickType.MIDDLE) {
+                plugin.getKitEditorGUI().open(player, kit);
                 return;
             }
 

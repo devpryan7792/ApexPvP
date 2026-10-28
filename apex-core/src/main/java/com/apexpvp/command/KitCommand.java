@@ -42,6 +42,24 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                              @NotNull Command command,
                              @NotNull String label,
                              @NotNull String[] args) {
+        if (label.equalsIgnoreCase("kiteditor")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(TextUtil.parse("<red>Only players can edit kit layouts."));
+                return true;
+            }
+            if (args.length >= 1) {
+                Kit kit = plugin.getKitManager().getKit(args[0]);
+                if (kit != null) {
+                    plugin.getKitEditorGUI().open(player, kit);
+                    return true;
+                } else {
+                    TextUtil.sendPrefixed(player, "<red>Kit '" + args[0] + "' not found. Opening kit selection...");
+                }
+            }
+            kitGUI.open(player);
+            return true;
+        }
+
         if (args.length == 0) {
             if (!(sender instanceof Player player)) {
                 sender.sendMessage(TextUtil.parse("<red>Console must use /kit list."));
@@ -60,6 +78,70 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                             + kit.getDisplayName() + " <dark_gray>(</dark_gray><gray>Icon: " + kit.getIcon().getType().name() + "</gray><dark_gray>)</dark_gray>"));
                 }
                 sender.sendMessage(TextUtil.parse("<dark_gray>=================================================="));
+                return true;
+            }
+            case "editor", "edit" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only in-game players can edit kit layouts."));
+                    return true;
+                }
+                if (args.length < 2) {
+                    kitGUI.open(player);
+                    return true;
+                }
+                String id = args[1].toLowerCase();
+                Kit kit = plugin.getKitManager().getKit(id);
+                if (kit == null) {
+                    TextUtil.sendPrefixed(player, "<red>Kit '" + id + "' not found.");
+                    return true;
+                }
+                plugin.getKitEditorGUI().open(player, kit);
+                return true;
+            }
+            case "get" -> {
+                if (!sender.hasPermission("apexpvp.kit.admin")) {
+                    sender.sendMessage(TextUtil.parse("<red>You do not have permission to inspect/get kits."));
+                    return true;
+                }
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only in-game players can use /kit get."));
+                    return true;
+                }
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /kit get <kit>");
+                    return true;
+                }
+                String id = args[1].toLowerCase();
+                Kit kit = plugin.getKitManager().getKit(id);
+                if (kit == null) {
+                    TextUtil.sendPrefixed(player, "<red>Kit '" + id + "' not found.");
+                    return true;
+                }
+                kit.apply(player, null);
+                TextUtil.sendPrefixed(player, "<green>Equipped kit <yellow>" + kit.getId() + "</yellow> into your inventory.");
+                TextUtil.sendPrefixed(player, "<gray>Tip: Modify items in your inventory and run <yellow>/kit set " + kit.getId() + "</yellow> to update it!");
+                return true;
+            }
+            case "set" -> {
+                if (!sender.hasPermission("apexpvp.kit.admin")) {
+                    sender.sendMessage(TextUtil.parse("<red>You do not have permission to modify kits."));
+                    return true;
+                }
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only in-game players can set kits from inventory."));
+                    return true;
+                }
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /kit set <kit>");
+                    return true;
+                }
+                String id = args[1].toLowerCase();
+                boolean updated = plugin.getKitManager().updateKitFromPlayer(id, player);
+                if (updated) {
+                    TextUtil.sendPrefixed(player, "<green>Successfully overwritten kit <yellow>" + id + "</yellow> with your current inventory and armor (saved to kits.yml)!");
+                } else {
+                    TextUtil.sendPrefixed(player, "<red>Kit '" + id + "' does not exist. Use /kit create " + id + " to create a new kit first.");
+                }
                 return true;
             }
             case "create" -> {
@@ -131,7 +213,7 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                 if (sender instanceof Player player) {
                     kitGUI.open(player);
                 } else {
-                    TextUtil.sendPrefixed(sender, "<red>Usage: /kit <list|create|delete|give>");
+                    TextUtil.sendPrefixed(sender, "<red>Usage: /kit <list|editor|create|set|get|delete|give>");
                 }
                 return true;
             }
@@ -143,19 +225,31 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                                                 @NotNull Command command,
                                                 @NotNull String label,
                                                 @NotNull String[] args) {
+        if (label.equalsIgnoreCase("kiteditor")) {
+            if (args.length == 1) {
+                List<String> kits = new ArrayList<>();
+                for (Kit k : plugin.getKitManager().getAllKits()) kits.add(k.getId());
+                return kits;
+            }
+            return Collections.emptyList();
+        }
+
         if (args.length == 1) {
             List<String> list = new ArrayList<>();
             list.add("list");
+            list.add("editor");
             if (sender.hasPermission("apexpvp.kit.admin")) {
                 list.add("create");
                 list.add("delete");
                 list.add("give");
+                list.add("set");
+                list.add("get");
             }
             return list;
         }
 
         String sub = args[0].toLowerCase();
-        if (sub.equals("delete")) {
+        if (sub.equals("delete") || sub.equals("get") || sub.equals("set") || sub.equals("editor") || sub.equals("edit")) {
             if (args.length == 2) {
                 List<String> kits = new ArrayList<>();
                 for (Kit k : plugin.getKitManager().getAllKits()) kits.add(k.getId());

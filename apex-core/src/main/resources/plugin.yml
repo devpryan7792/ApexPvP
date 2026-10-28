@@ -48,6 +48,10 @@ commands:
     description: Open the kit selection menu or configure combat kits
     usage: /kits [list|create|delete|give]
     aliases: [kit]
+  kiteditor:
+    description: Open the visual kit layout editor to customize your hotbar
+    usage: /kiteditor [kit]
+    aliases: [editkit, layout]
 
 permissions:
   apexpvp.admin:

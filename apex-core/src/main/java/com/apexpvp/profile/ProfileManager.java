@@ -311,6 +311,29 @@ public class ProfileManager {
     }
 
     /**
+     * Resets and deletes a custom hotbar layout for a player in memory and database.
+     */
+    @NotNull
+    public CompletableFuture<Void> resetCustomHotbar(@NotNull UUID uuid, @NotNull String kitId) {
+        PlayerProfile profile = getProfile(uuid);
+        if (profile != null) {
+            profile.removeCustomHotbar(kitId);
+        }
+        return CompletableFuture.runAsync(() -> {
+            try (Connection conn = databaseManager.getConnection()) {
+                String sql = "DELETE FROM apex_player_kit_layouts WHERE uuid = ? AND kit_id = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, uuid.toString());
+                    ps.setString(2, kitId.toLowerCase());
+                    ps.executeUpdate();
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to delete kit layout for " + uuid + " (" + kitId + ")", e);
+            }
+        });
+    }
+
+    /**
      * Flushes all cached dirty profiles to the database synchronously on server shutdown.
      */
     public void saveAllSync() {

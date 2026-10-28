@@ -217,6 +217,11 @@ public class PlayerProfile {
         markDirty();
     }
 
+    public void removeCustomHotbar(@NotNull String kitId) {
+        customHotbars.remove(kitId.toLowerCase());
+        markDirty();
+    }
+
     @NotNull
     public Map<String, String> getAllCustomHotbars() {
         return Collections.unmodifiableMap(customHotbars);

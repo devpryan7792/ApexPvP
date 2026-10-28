@@ -29,6 +29,8 @@ class KitManagerConfigTest {
         assertTrue(section.contains("combo"), "Combo kit must exist");
         assertTrue(section.contains("sumo"), "Sumo kit must exist");
         assertTrue(section.contains("builduhc"), "BuildUHC kit must exist");
+        assertTrue(section.contains("debuff"), "Debuff kit must exist");
+        assertTrue(section.contains("custom"), "Custom kit must exist");
 
         // Verify specific kit rules
         assertTrue(section.getBoolean("combo.rules.combo-mode"), "Combo kit must have combo-mode enabled");

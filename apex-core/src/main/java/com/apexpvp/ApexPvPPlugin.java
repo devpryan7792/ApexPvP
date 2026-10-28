@@ -28,6 +28,7 @@ import com.apexpvp.party.PartyManager;
 import com.apexpvp.queue.QueueManager;
 import com.apexpvp.ui.bossbar.LobbyBossBarManager;
 import com.apexpvp.ui.gui.KitGUI;
+import com.apexpvp.ui.gui.KitEditorGUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -60,6 +61,7 @@ public class ApexPvPPlugin extends JavaPlugin {
     private LeaderboardManager leaderboardManager;
     private BettingManager bettingManager;
     private KitGUI kitGUI;
+    private KitEditorGUI kitEditorGUI;
     private LobbyBossBarManager lobbyBossBarManager;
 
     private boolean citizensAvailable;
@@ -101,11 +103,13 @@ public class ApexPvPPlugin extends JavaPlugin {
         this.arenaManager = new ArenaManager(this);
         this.arenaManager.initialize();
 
-        // 5. Initialize Multi-Kit Engine and Kit Selection GUI
+        // 5. Initialize Multi-Kit Engine, Kit Selection GUI, and Layout Editor
         this.kitManager = new KitManager(this);
         this.kitManager.initialize();
         this.kitGUI = new KitGUI(this);
         getServer().getPluginManager().registerEvents(kitGUI, this);
+        this.kitEditorGUI = new KitEditorGUI(this);
+        getServer().getPluginManager().registerEvents(kitEditorGUI, this);
 
         // 6. Initialize Lobby BossBar Manager
         this.lobbyBossBarManager = new LobbyBossBarManager(this);
@@ -279,6 +283,11 @@ public class ApexPvPPlugin extends JavaPlugin {
             getCommand("kits").setExecutor(kitCmd);
             getCommand("kits").setTabCompleter(kitCmd);
         }
+        if (getCommand("kiteditor") != null) {
+            KitCommand kitCmd = new KitCommand(this, kitGUI);
+            getCommand("kiteditor").setExecutor(kitCmd);
+            getCommand("kiteditor").setTabCompleter(kitCmd);
+        }
     }
 
     @NotNull
@@ -366,6 +375,11 @@ public class ApexPvPPlugin extends JavaPlugin {
     @NotNull
     public KitGUI getKitGUI() {
         return kitGUI;
+    }
+
+    @NotNull
+    public KitEditorGUI getKitEditorGUI() {
+        return kitEditorGUI;
     }
 
     @NotNull
