@@ -18,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class ArenaThemedPlatformTest {
 
     private static final List<String> ICONIC_ARENAS = List.of(
-            "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak", "sumo"
+            "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak", "sumo",
+            "celestial", "glaciem", "spiritual"
     );
 
     @Test

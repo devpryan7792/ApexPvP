@@ -338,8 +338,10 @@ public class ArenaManager {
         // Build combat arena
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
-                // Bedrock foundation beneath the floor to prevent breaking through
+                // Reinforced bedrock foundation (3 layers) to protect against Crystal PvP explosions
                 world.getBlockAt(x, originY - 1, z).setType(Material.BEDROCK, false);
+                world.getBlockAt(x, originY - 2, z).setType(Material.BEDROCK, false);
+                world.getBlockAt(x, originY - 3, z).setType(Material.BEDROCK, false);
 
                 int distEdge = Math.min(Math.min(x - minX, maxX - x), Math.min(z - minZ, maxZ - z));
                 int distCenterSq = (x - centerX) * (x - centerX) + (z - centerZ) * (z - centerZ);

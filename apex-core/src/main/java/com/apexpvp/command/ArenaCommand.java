@@ -50,6 +50,7 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             sender.sendMessage(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>ApexPvP Arena Management</bold></gradient>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena list</yellow> <gray>- View all configured templates & instances</gray>"));
+            sender.sendMessage(TextUtil.parse("<yellow>/arena create <id> [displayName] [radius]</yellow> <gray>- Create arena from WorldEdit selection</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena tp <template></yellow> <gray>- Teleport into arena platform</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena setspawn <template> <a|b|spec></yellow> <gray>- Update spawn point</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena reload</yellow> <gray>- Reload arenas.yml and regenerate platforms</gray>"));
@@ -59,6 +60,67 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase();
 
         switch (sub) {
+            case "create" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only players can create an arena."));
+                    return true;
+                }
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /arena create <id> [displayName] [radius]");
+                    return true;
+                }
+                String id = args[1].toLowerCase();
+                if (plugin.getArenaManager().getTemplate(id) != null) {
+                    TextUtil.sendPrefixed(player, "<red>An arena template with ID '<yellow>" + id + "</yellow>' already exists!");
+                    return true;
+                }
+
+                String displayName = args.length >= 3 ? args[2] : id;
+                ArenaBounds bounds = null;
+
+                // 1. Try to read active WorldEdit selection
+                ArenaBounds weBounds = com.apexpvp.integration.worldedit.WorldEditHook.getPlayerSelectionBounds(player);
+                if (weBounds != null) {
+                    int centerX = (weBounds.getMinX() + weBounds.getMaxX()) / 2;
+                    int centerZ = (weBounds.getMinZ() + weBounds.getMaxZ()) / 2;
+                    int minY = weBounds.getMinY();
+
+                    int relMinX = weBounds.getMinX() - centerX;
+                    int relMaxX = weBounds.getMaxX() - centerX;
+                    int relMinZ = weBounds.getMinZ() - centerZ;
+                    int relMaxZ = weBounds.getMaxZ() - centerZ;
+                    int relMaxY = Math.max(25, weBounds.getMaxY() - minY);
+
+                    bounds = new ArenaBounds(relMinX, 0, relMinZ, relMaxX, relMaxY, relMaxZ);
+                    TextUtil.sendPrefixed(player, "<green>Captured WorldEdit selection: <white>" +
+                            (relMaxX - relMinX) + "x" + (relMaxZ - relMinZ) + "</white> blocks!");
+                } else {
+                    int radius = 30;
+                    if (args.length >= 4) {
+                        try {
+                            radius = Integer.parseInt(args[3]);
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    bounds = new ArenaBounds(-radius, 0, -radius, radius, 40, radius);
+                    TextUtil.sendPrefixed(player, "<yellow>No WorldEdit selection found. Defaulting to radius <gold>" + radius + "</gold> blocks.");
+                }
+
+                int halfX = bounds.getMaxX() * 2 / 3;
+                ArenaTemplate.SpawnPoint spawnA = new ArenaTemplate.SpawnPoint(-halfX, 1.0, 0.5, -90.0f, 0.0f);
+                ArenaTemplate.SpawnPoint spawnB = new ArenaTemplate.SpawnPoint(halfX, 1.0, 0.5, 90.0f, 0.0f);
+                ArenaTemplate.SpawnPoint spec = new ArenaTemplate.SpawnPoint(0.5, 15.0, 0.5, 0.0f, 45.0f);
+
+                boolean created = plugin.getArenaManager().createTemplate(id, displayName, bounds, spawnA, spawnB, spec);
+                if (created) {
+                    TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>ARENA CREATED!</bold></gradient> Arena <gold>" + displayName +
+                            "</gold> (<yellow>" + id + "</yellow>) is now registered!\n" +
+                            "<gray>Next step: Set your spawns with <yellow>/arena setspawn " + id + " <a|b|spec></yellow>.");
+                } else {
+                    TextUtil.sendPrefixed(player, "<red>Failed to create arena template.");
+                }
+                return true;
+            }
+
             case "list" -> {
                 Collection<ArenaTemplate> templates = plugin.getArenaManager().getAllTemplates();
                 sender.sendMessage(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>Arena Templates</bold></gradient> <gray>(" + templates.size() + " loaded):</gray>"));
@@ -191,6 +253,7 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             completions.add("list");
+            completions.add("create");
             completions.add("tp");
             completions.add("setspawn");
             completions.add("reload");

@@ -254,3 +254,112 @@ templates:
       min-build-y: 64
       max-build-y: 70
     schematic: "sumo.schem"
+
+  celestial:
+    template-id: 8
+    display-name: "<gradient:#FFD700:#FF8C00>Celestial Bastion</gradient>"
+    bounds:
+      min-x: -80
+      min-y: 0
+      min-z: -100
+      max-x: 80
+      max-y: 125
+      max-z: 100
+    spawns:
+      spawn-a:
+        x: -40.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 40.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 35.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 120
+    schematic: "celestial.schem"
+
+  glaciem:
+    template-id: 9
+    display-name: "<gradient:#00FFFF:#0088FF>GLACIEM Arena</gradient>"
+    bounds:
+      min-x: -32
+      min-y: 0
+      min-z: -53
+      max-x: 32
+      max-y: 35
+      max-z: 53
+    spawns:
+      spawn-a:
+        x: 0.5
+        y: 1.0
+        z: -35.5
+        yaw: 0.0
+        pitch: 0.0
+      spawn-b:
+        x: 0.5
+        y: 1.0
+        z: 35.5
+        yaw: 180.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 20.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 95
+    schematic: "glaciem.schem"
+
+  spiritual:
+    template-id: 10
+    display-name: "<gradient:#BA55D3:#4B0082>Spiritual Arena</gradient>"
+    bounds:
+      min-x: -84
+      min-y: 0
+      min-z: -84
+      max-x: 84
+      max-y: 85
+      max-z: 84
+    spawns:
+      spawn-a:
+        x: -45.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 45.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 30.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 110
+    schematic: "spiritual.schematic"
+

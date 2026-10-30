@@ -10,7 +10,9 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.scheduler.BukkitTask;
@@ -46,6 +48,10 @@ public abstract class Match {
     protected long startTime;
     protected long endTime;
     private BukkitTask countdownTask;
+    private BukkitTask matchTickerTask;
+    private double currentSafeRadius = -1.0;
+    private boolean warningAnnounced = false;
+    private boolean shrinkAnnounced = false;
 
     public Match(@NotNull ApexPvPPlugin plugin,
                  @NotNull ArenaInstance arena,
@@ -165,6 +171,115 @@ public abstract class Match {
                 p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.2f);
             }
         }
+
+        // Start Match & Safe Zone Ticker (runs once per second = 20 ticks)
+        startMatchTicker();
+    }
+
+    protected void startMatchTicker() {
+        boolean borderEnabled = plugin.getConfig().getBoolean("match.border.enabled", true);
+        int shrinkDelaySec = plugin.getConfig().getInt("match.border.shrink-delay-seconds", 180);
+        int shrinkDurationSec = plugin.getConfig().getInt("match.border.shrink-duration-seconds", 60);
+        double minRadius = plugin.getConfig().getDouble("match.border.minimum-radius", 6.0);
+        double damagePerSec = plugin.getConfig().getDouble("match.border.damage-per-second", 4.0);
+        int maxDurationSec = plugin.getConfig().getInt("match.max-match-duration-seconds", 600);
+
+        int halfWidth = (arena.getBounds().getMaxX() - arena.getBounds().getMinX()) / 2;
+        int halfLength = (arena.getBounds().getMaxZ() - arena.getBounds().getMinZ()) / 2;
+        double initialRadius = Math.max(15.0, Math.min(halfWidth, halfLength));
+        this.currentSafeRadius = initialRadius;
+
+        int centerX = (arena.getBounds().getMinX() + arena.getBounds().getMaxX()) / 2;
+        int centerZ = (arena.getBounds().getMinZ() + arena.getBounds().getMaxZ()) / 2;
+        int floorY = arena.getOriginY();
+
+        this.matchTickerTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (state.get() != MatchState.ACTIVE) {
+                if (matchTickerTask != null) {
+                    matchTickerTask.cancel();
+                    matchTickerTask = null;
+                }
+                return;
+            }
+
+            long elapsedSec = (System.currentTimeMillis() - startTime) / 1000L;
+
+            // 1. Hard match timeout (e.g. 10 minutes)
+            if (elapsedSec >= maxDurationSec) {
+                broadcast("<red><bold>MATCH TIMEOUT!</bold></red> <gray>The match exceeded maximum duration limit (" + (maxDurationSec / 60) + "m). Ending match...");
+                enterEnding(-1);
+                return;
+            }
+
+            if (!borderEnabled) return;
+
+            // 2. Warning announcement 15 seconds before shrink begins
+            if (elapsedSec >= (shrinkDelaySec - 15) && elapsedSec < shrinkDelaySec && !warningAnnounced) {
+                warningAnnounced = true;
+                Title warningTitle = Title.title(
+                        TextUtil.parse("<yellow><bold>BORDER SHRINKING IN 15s!</bold></yellow>"),
+                        TextUtil.parse("<gray>Move toward the center of the arena!</gray>"),
+                        Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1200), Duration.ofMillis(200))
+                );
+                for (MatchParticipant part : participants.values()) {
+                    Player p = Bukkit.getPlayer(part.getUuid());
+                    if (p != null) {
+                        p.showTitle(warningTitle);
+                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
+                    }
+                }
+            }
+
+            // 3. Shrinking safe zone in progress
+            if (elapsedSec >= shrinkDelaySec) {
+                if (!shrinkAnnounced) {
+                    shrinkAnnounced = true;
+                    Title shrinkTitle = Title.title(
+                            TextUtil.parse("<red><bold>SAFE ZONE SHRINKING!</bold></red>"),
+                            TextUtil.parse("<gray>Outside borders take continuous damage!</gray>"),
+                            Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1200), Duration.ofMillis(200))
+                    );
+                    for (MatchParticipant part : participants.values()) {
+                        Player p = Bukkit.getPlayer(part.getUuid());
+                        if (p != null) {
+                            p.showTitle(shrinkTitle);
+                            p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.6f, 1.2f);
+                        }
+                    }
+                }
+
+                long shrinkElapsed = elapsedSec - shrinkDelaySec;
+                double progress = Math.min(1.0, (double) shrinkElapsed / Math.max(1, shrinkDurationSec));
+                currentSafeRadius = initialRadius - (progress * (initialRadius - minRadius));
+
+                World world = arena.getWorld();
+                if (world != null) {
+                    int particlePoints = (int) (currentSafeRadius * 2.5);
+                    for (int i = 0; i < particlePoints; i++) {
+                        double angle = 2 * Math.PI * i / particlePoints;
+                        double px = centerX + currentSafeRadius * Math.cos(angle);
+                        double pz = centerZ + currentSafeRadius * Math.sin(angle);
+                        world.spawnParticle(Particle.FLAME, px, floorY + 1.0, pz, 1, 0, 0, 0, 0.0);
+                    }
+                }
+
+                for (MatchParticipant part : participants.values()) {
+                    if (!part.isAlive()) continue;
+                    Player p = Bukkit.getPlayer(part.getUuid());
+                    if (p == null || !p.isOnline() || p.isDead()) continue;
+
+                    double dx = p.getLocation().getX() - centerX;
+                    double dz = p.getLocation().getZ() - centerZ;
+                    double dist = Math.sqrt(dx * dx + dz * dz);
+
+                    if (dist > currentSafeRadius) {
+                        p.damage(damagePerSec);
+                        p.sendActionBar(TextUtil.parse("<red><bold>OUTSIDE SAFE ZONE!</bold></red> <gray>(-" + (int)damagePerSec + " HP)</gray>"));
+                        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.8f, 1.0f);
+                    }
+                }
+            }
+        }, 20L, 20L);
     }
 
     /**
@@ -263,6 +378,11 @@ public abstract class Match {
             countdownTask = null;
         }
 
+        if (matchTickerTask != null) {
+            matchTickerTask.cancel();
+            matchTickerTask = null;
+        }
+
         this.endTime = System.currentTimeMillis();
 
         // Subclass hook for mode-specific ELO, stats, and Vault payouts
@@ -289,6 +409,12 @@ public abstract class Match {
 
         if (countdownTask != null) {
             countdownTask.cancel();
+            countdownTask = null;
+        }
+
+        if (matchTickerTask != null) {
+            matchTickerTask.cancel();
+            matchTickerTask = null;
         }
 
         if (plugin.getBettingManager() != null) {
@@ -368,5 +494,9 @@ public abstract class Match {
     @NotNull
     public List<MatchParticipant> getParticipants() {
         return Collections.unmodifiableList(new ArrayList<>(participants.values()));
+    }
+
+    public double getCurrentSafeRadius() {
+        return currentSafeRadius;
     }
 }

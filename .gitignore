@@ -12,3 +12,7 @@ build/
 *.log
 *.db
 *.sqlite
+
+# Local drops / temporary zips
+pvp/
+pvp.zip

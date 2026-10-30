@@ -118,6 +118,7 @@ public class ArenaCommandTest {
         List<String> subCompletions = command.onTabComplete(sender, mockCmd, "arena", new String[]{""});
         assertNotNull(subCompletions);
         assertTrue(subCompletions.contains("list"));
+        assertTrue(subCompletions.contains("create"));
         assertTrue(subCompletions.contains("tp"));
         assertTrue(subCompletions.contains("setspawn"));
         assertTrue(subCompletions.contains("reload"));
@@ -131,5 +132,32 @@ public class ArenaCommandTest {
         assertTrue(spawnCompletions.contains("a"));
         assertTrue(spawnCompletions.contains("b"));
         assertTrue(spawnCompletions.contains("spec"));
+    }
+
+    @Test
+    @DisplayName("Verify /arena create registers new template with radius fallback")
+    void testArenaCreateRadiusFallback() {
+        Player player = mock(Player.class);
+        when(player.hasPermission("apexpvp.arena.admin")).thenReturn(true);
+        when(arenaManager.getTemplate("neon_city")).thenReturn(null);
+        when(arenaManager.createTemplate(eq("neon_city"), eq("Neon City"), any(ArenaBounds.class), any(), any(), any()))
+                .thenReturn(true);
+
+        boolean result = command.onCommand(player, mockCmd, "arena", new String[]{"create", "neon_city", "Neon City", "35"});
+        assertTrue(result);
+        verify(arenaManager).createTemplate(eq("neon_city"), eq("Neon City"), any(ArenaBounds.class), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Verify /arena create rejects if template already exists")
+    void testArenaCreateDuplicateRejection() {
+        Player player = mock(Player.class);
+        when(player.hasPermission("apexpvp.arena.admin")).thenReturn(true);
+        ArenaTemplate existing = mock(ArenaTemplate.class);
+        when(arenaManager.getTemplate("colosseum")).thenReturn(existing);
+
+        boolean result = command.onCommand(player, mockCmd, "arena", new String[]{"create", "colosseum"});
+        assertTrue(result);
+        verify(arenaManager, never()).createTemplate(any(), any(), any(), any(), any(), any());
     }
 }
