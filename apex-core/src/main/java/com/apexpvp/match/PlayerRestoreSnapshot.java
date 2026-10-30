@@ -105,7 +105,7 @@ public class PlayerRestoreSnapshot {
         }
 
         // Restore vitals
-        AttributeInstance maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
         double maxHp = maxHealth != null ? maxHealth.getValue() : 20.0;
         player.setHealth(Math.min(health, maxHp));
         player.setFoodLevel(foodLevel);
@@ -115,7 +115,7 @@ public class PlayerRestoreSnapshot {
         player.setFireTicks(0);
 
         // Reset attack speed to standard (in case kit had combo mode)
-        AttributeInstance attackSpeed = player.getAttribute(Attribute.GENERIC_ATTACK_SPEED);
+        AttributeInstance attackSpeed = player.getAttribute(Attribute.ATTACK_SPEED);
         if (attackSpeed != null) {
             attackSpeed.setBaseValue(4.0);
         }

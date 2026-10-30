@@ -3,8 +3,8 @@ plugins {
 }
 
 dependencies {
-    // Paper 1.20.6 / modern Paper API
-    compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
+    // Paper 26.3 / modern Paper API
+    compileOnly("io.papermc.paper:paper-api:26.3.build.231-stable")
 
     // Database Pooling & Drivers (shaded)
     implementation("com.zaxxer:HikariCP:5.1.0")
@@ -32,13 +32,15 @@ dependencies {
     // Testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation("org.mockito:mockito-core:5.11.0")
-    testImplementation("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.231-stable")
     testImplementation("com.github.MilkBowl:VaultAPI:1.7.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("net.bytebuddy.experimental", "true")
+    jvmArgs("-XX:+EnableDynamicAgentLoading")
 }
 
 tasks.shadowJar {

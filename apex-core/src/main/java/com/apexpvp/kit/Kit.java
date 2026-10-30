@@ -107,7 +107,7 @@ public class Kit {
         }
 
         // Apply attack cooldown rule for Combo Mode (1.8 no-delay combat emulation)
-        AttributeInstance attackSpeed = player.getAttribute(Attribute.GENERIC_ATTACK_SPEED);
+        AttributeInstance attackSpeed = player.getAttribute(Attribute.ATTACK_SPEED);
         if (attackSpeed != null) {
             if (rules.comboMode()) {
                 attackSpeed.setBaseValue(1024.0); // Eliminates 1.9+ weapon cooldown
@@ -117,7 +117,7 @@ public class Kit {
         }
 
         // Reset vitals
-        AttributeInstance maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
         if (maxHealth != null) {
             player.setHealth(maxHealth.getValue());
         }
