@@ -300,11 +300,13 @@ public abstract class Match {
             Player p = Bukkit.getPlayer(entry.getKey());
             if (p != null && p.isOnline()) {
                 entry.getValue().restore(p);
+                plugin.getMatchManager().unregisterParticipant(p.getUniqueId());
                 if (plugin.getLobbyBossBarManager() != null) {
                     plugin.getLobbyBossBarManager().update(p);
                 }
             } else {
                 plugin.getMatchManager().savePendingRestore(entry.getKey(), entry.getValue());
+                plugin.getMatchManager().unregisterParticipant(entry.getKey());
             }
         }
         snapshots.clear();
@@ -316,6 +318,8 @@ public abstract class Match {
                 Player p = Bukkit.getPlayer(part.getUuid());
                 if (p == null || !p.isOnline()) {
                     plugin.getProfileManager().unloadProfile(part.getUuid());
+                } else if (plugin.getLobbyBossBarManager() != null) {
+                    plugin.getLobbyBossBarManager().update(p);
                 }
             }
             plugin.getMatchManager().unregisterMatch(matchId);

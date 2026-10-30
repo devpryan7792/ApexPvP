@@ -7,6 +7,9 @@ import com.apexpvp.match.Match;
 import com.apexpvp.match.MatchParticipant;
 import com.apexpvp.profile.PlayerProfile;
 import com.apexpvp.profile.PlayerStats;
+import com.apexpvp.profile.Rank;
+import com.apexpvp.util.EloCalculator;
+import com.apexpvp.util.TextUtil;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -52,13 +55,55 @@ public class DuelMatch extends Match {
         Player winner = Bukkit.getPlayer(winnerUuid);
         Player loser = Bukkit.getPlayer(loserUuid);
 
-        String winnerName = (winner != null) ? winner.getName() : "Winner";
-        String loserName = (loser != null) ? loser.getName() : "Loser";
+        PlayerProfile winnerProfile = plugin.getProfileManager().getProfile(winnerUuid);
+        PlayerProfile loserProfile = plugin.getProfileManager().getProfile(loserUuid);
 
-        broadcast("<gradient:#00FFAA:#00AAFF><bold>DUEL ENDED!</bold></gradient> <gold>" + winnerName + "</gold> defeated <red>" + loserName + "</red>!");
+        String winnerName = (winner != null) ? winner.getName() : (winnerProfile != null ? winnerProfile.getUsername() : "Winner");
+        String loserName = (loser != null) ? loser.getName() : (loserProfile != null ? loserProfile.getUsername() : "Loser");
+
+        int eloDelta = 0;
+        boolean eloEnabled = plugin.getConfig().getBoolean("duels.elo.enabled", true);
+        if (eloEnabled && winnerProfile != null && loserProfile != null) {
+            int winnerOldElo = winnerProfile.getElo();
+            int loserOldElo = loserProfile.getElo();
+
+            int kFactor = plugin.getConfig().getInt("ranked.k-factor", 32);
+            boolean dynamicK = plugin.getConfig().getBoolean("ranked.dynamic-k-factor", true);
+            int totalWinnerMatches = winnerProfile.getAllStats().values().stream()
+                    .mapToInt(s -> s.getWins() + s.getLosses()).sum();
+
+            eloDelta = (kFactor > 0 && !dynamicK)
+                    ? EloCalculator.calculateDelta(winnerOldElo, loserOldElo, kFactor)
+                    : EloCalculator.calculateDynamicDelta(winnerOldElo, loserOldElo, totalWinnerMatches);
+
+            int winnerNewElo = winnerProfile.modifyElo(eloDelta);
+            int loserNewElo = loserProfile.modifyElo(-eloDelta);
+
+            // Check Rank Progression
+            Rank newRank = Rank.fromElo(winnerNewElo);
+            if (newRank.ordinal() > winnerProfile.getRank().ordinal()) {
+                boolean requireRankupFee = plugin.getConfig().getBoolean("ranked.economy.require-rankup-fee", false);
+                if (!requireRankupFee) {
+                    winnerProfile.setRank(newRank);
+                    broadcast("<gradient:#00FFAA:#00AAFF><bold>RANK UP!</bold></gradient> <gold>" + winnerProfile.getUsername() + "</gold> reached " + newRank.getMiniMessageDisplay() + "!");
+                } else if (winner != null) {
+                    winner.sendMessage(TextUtil.parse(plugin.getConfig().getString("rank.threshold-reached", "<green>You unlocked rank threshold for " + newRank.getDisplayName() + "! Use /rankup.")));
+                }
+            }
+
+            if (winner != null) {
+                TextUtil.sendPrefixed(winner, "<green>+" + eloDelta + " ELO <gray>(Rating: " + winnerNewElo + ")");
+            }
+            if (loser != null) {
+                TextUtil.sendPrefixed(loser, "<red>-" + eloDelta + " ELO <gray>(Rating: " + loserNewElo + ")");
+            }
+        }
+
+        String winnerDisplay = "<gold>" + winnerName + "</gold>" + (eloDelta > 0 ? " (+<green>" + eloDelta + "</green> ELO)" : "");
+        String loserDisplay = "<red>" + loserName + "</red>" + (eloDelta > 0 ? " (-<red>" + eloDelta + "</red> ELO)" : "");
+        broadcast("<gradient:#00FFAA:#00AAFF><bold>DUEL ENDED!</bold></gradient> " + winnerDisplay + " defeated " + loserDisplay + "!");
 
         // Update statistics and streaks
-        PlayerProfile winnerProfile = plugin.getProfileManager().getProfile(winnerUuid);
         if (winnerProfile != null) {
             PlayerStats stats = winnerProfile.getOrCreateStats(kit.getId());
             stats.incrementWins();
@@ -69,9 +114,9 @@ public class DuelMatch extends Match {
                 broadcast("<gold>" + winnerProfile.getUsername() + "</gold> is on a <gradient:#FFAA00:#FF5555><bold>" + streak + "-MATCH WIN STREAK!</bold></gradient>");
             }
             winnerProfile.markDirty();
+            plugin.getProfileManager().saveProfile(winnerProfile);
         }
 
-        PlayerProfile loserProfile = plugin.getProfileManager().getProfile(loserUuid);
         if (loserProfile != null) {
             PlayerStats stats = loserProfile.getOrCreateStats(kit.getId());
             stats.incrementLosses();
@@ -79,6 +124,7 @@ public class DuelMatch extends Match {
             loserProfile.resetStreak();
             loserProfile.incrementLossStreak();
             loserProfile.markDirty();
+            plugin.getProfileManager().saveProfile(loserProfile);
         }
 
         // Process Escrow Stake Payout
@@ -91,12 +137,12 @@ public class DuelMatch extends Match {
             broadcast("<gold>" + winnerName + "</gold> won the wager of <yellow>" + netWinnings + "</yellow> coins! (Tax: " + taxDeduction + ")");
         }
 
-        // Record to audit database
+        // Record to audit database with accurate eloDelta
         int durationSec = (int) ((endTime - startTime) / 1000);
         plugin.getDatabaseManager().executeUpdateAsync(
             "INSERT INTO apex_match_history (match_id, mode, kit_id, arena_id, winner_uuid, loser_uuid, elo_delta, stake_amount, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             matchId.toString(), "DUEL", kit.getId(), arena.getTemplate().getId(),
-            winnerUuid.toString(), loserUuid.toString(), 0, stakeAmount, durationSec
+            winnerUuid.toString(), loserUuid.toString(), eloDelta, stakeAmount, durationSec
         );
     }
 

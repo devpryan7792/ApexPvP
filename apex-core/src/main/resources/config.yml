@@ -33,13 +33,14 @@ storage:
 ranked:
   default-elo: 800
   k-factor: 32
+  dynamic-k-factor: true
   economy:
     # Requires Vault
     enabled: true
     entry-fee: 25.0
     win-reward: 50.0
     # Enable paying a rankup cost before advancing rank tiers
-    require-rankup-fee: true
+    require-rankup-fee: false
   queue:
     initial-search-range: 50
     range-expansion-step: 25
@@ -48,6 +49,8 @@ ranked:
 # 1v1 Duels & Escrow
 duels:
   request-timeout-seconds: 60
+  elo:
+    enabled: true
   betting:
     enabled: true
     min-stake: 10.0
