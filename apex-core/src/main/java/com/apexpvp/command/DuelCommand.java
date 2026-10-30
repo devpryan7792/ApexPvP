@@ -86,16 +86,26 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Kit kit = null;
-        if (args.length > 1) {
-            kit = plugin.getKitManager().getKit(args[1]);
+        if (target.equals(player)) {
+            TextUtil.sendPrefixed(player, "<red>You cannot duel yourself!");
+            return true;
         }
+
+        if (plugin.getMatchManager().isInMatch(player) || plugin.getMatchManager().isInMatch(target)) {
+            TextUtil.sendPrefixed(player, "<red>Either you or the target is currently in a match.");
+            return true;
+        }
+
+        // When only target is provided, open interactive GUI for kit selection
+        if (args.length == 1) {
+            plugin.getDuelKitGUI().open(player, target);
+            return true;
+        }
+
+        Kit kit = plugin.getKitManager().getKit(args[1]);
         if (kit == null) {
-            kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
-            if (kit == null) {
-                TextUtil.sendPrefixed(player, "<red>No kits are currently configured on the server.");
-                return true;
-            }
+            TextUtil.sendPrefixed(player, "<red>Kit '<yellow>" + args[1] + "</yellow>' not found. Choose a kit in the GUI or check <yellow>/kit list</yellow>.");
+            return true;
         }
 
         double stake = 0.0;

@@ -21,6 +21,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.util.Vector;
 import com.apexpvp.util.TextUtil;
 import org.jetbrains.annotations.NotNull;
@@ -130,17 +131,32 @@ public class MatchListener implements Listener {
 
         // 1. Freeze movement during PREPARING & COUNTDOWN (freeze X, Y, and Z)
         if (match.getState().isFrozen()) {
-            if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
-                event.setTo(new Location(from.getWorld(), from.getX(), from.getY(), from.getZ(), to.getYaw(), to.getPitch()));
-                return;
+            // Only freeze if player is actually inside the arena world
+            if (from.getWorld() != null && from.getWorld().equals(match.getArena().getWorld())) {
+                if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
+                    event.setTo(new Location(from.getWorld(), from.getX(), from.getY(), from.getZ(), to.getYaw(), to.getPitch()));
+                }
+            } else {
+                // If player is still in lobby/overworld, ensure they are sent to their designated arena spawn
+                MatchParticipant part = match.getParticipant(player.getUniqueId());
+                if (part != null) {
+                    Location spawn = (part.getTeamIndex() == 0) ? match.getArena().getSpawnA() : match.getArena().getSpawnB();
+                    player.teleport(spawn, PlayerTeleportEvent.TeleportCause.PLUGIN);
+                }
             }
+            return;
+        }
+
+        // Only enforce in-arena boundary/void checks if the player is in the arena world
+        if (to.getWorld() == null || !to.getWorld().equals(match.getArena().getWorld())) {
+            return;
         }
 
         // 2. Clamp Spectators within Arena bounds
         MatchParticipant part = match.getParticipant(player.getUniqueId());
         if (part != null && part.isSpectator()) {
             if (!match.getArena().getBounds().contains(to)) {
-                player.teleport(match.getArena().getSpectatorSpawn());
+                player.teleport(match.getArena().getSpectatorSpawn(), PlayerTeleportEvent.TeleportCause.PLUGIN);
                 return;
             }
         }

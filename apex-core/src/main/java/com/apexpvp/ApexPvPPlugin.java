@@ -29,6 +29,7 @@ import com.apexpvp.queue.QueueManager;
 import com.apexpvp.ui.bossbar.LobbyBossBarManager;
 import com.apexpvp.ui.gui.KitGUI;
 import com.apexpvp.ui.gui.KitEditorGUI;
+import com.apexpvp.ui.gui.DuelKitGUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -62,6 +63,7 @@ public class ApexPvPPlugin extends JavaPlugin {
     private BettingManager bettingManager;
     private KitGUI kitGUI;
     private KitEditorGUI kitEditorGUI;
+    private DuelKitGUI duelKitGUI;
     private LobbyBossBarManager lobbyBossBarManager;
 
     private boolean citizensAvailable;
@@ -110,6 +112,8 @@ public class ApexPvPPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(kitGUI, this);
         this.kitEditorGUI = new KitEditorGUI(this);
         getServer().getPluginManager().registerEvents(kitEditorGUI, this);
+        this.duelKitGUI = new DuelKitGUI(this);
+        getServer().getPluginManager().registerEvents(duelKitGUI, this);
 
         // 6. Initialize Lobby BossBar Manager
         this.lobbyBossBarManager = new LobbyBossBarManager(this);
@@ -380,6 +384,11 @@ public class ApexPvPPlugin extends JavaPlugin {
     @NotNull
     public KitEditorGUI getKitEditorGUI() {
         return kitEditorGUI;
+    }
+
+    @NotNull
+    public DuelKitGUI getDuelKitGUI() {
+        return duelKitGUI;
     }
 
     @NotNull

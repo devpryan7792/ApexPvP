@@ -60,14 +60,6 @@ public class Kit {
             player.removePotionEffect(effect.getType());
         }
 
-        // Apply armor
-        player.getInventory().setArmorContents(cloneItemArray(armorContents, 4));
-
-        // Apply offhand
-        if (offHand != null) {
-            player.getInventory().setItemInOffHand(offHand.clone());
-        }
-
         // Prepare main inventory
         ItemStack[] finalContents = cloneItemArray(mainContents, 36);
 
@@ -99,7 +91,18 @@ public class Kit {
             }
         }
 
-        player.getInventory().setContents(finalContents);
+        // Set storage contents (slots 0..35) without wiping armor/offhand
+        player.getInventory().setStorageContents(finalContents);
+
+        // Set armor contents (slots 36..39)
+        player.getInventory().setArmorContents(cloneItemArray(armorContents, 4));
+
+        // Set offhand (slot 40)
+        if (offHand != null) {
+            player.getInventory().setItemInOffHand(offHand.clone());
+        } else {
+            player.getInventory().setItemInOffHand(null);
+        }
 
         // Apply potion effects
         for (PotionEffect effect : potionEffects) {

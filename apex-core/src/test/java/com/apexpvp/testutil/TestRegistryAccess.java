@@ -51,6 +51,11 @@ public class TestRegistryAccess implements RegistryAccess {
                     || ("minecraft:enchantment".equals(keyString));
         }
 
+        private boolean isAttributeRegistry() {
+            return (clazz != null && org.bukkit.attribute.Attribute.class.isAssignableFrom(clazz))
+                    || ("minecraft:attribute".equals(keyString));
+        }
+
         @Override
         @SuppressWarnings("unchecked")
         public @Nullable T get(@NotNull NamespacedKey namespacedKey) {
@@ -90,6 +95,14 @@ public class TestRegistryAccess implements RegistryAccess {
                     Enchantment mock = Mockito.mock(Enchantment.class);
                     Mockito.lenient().when(mock.getKey()).thenReturn(namespacedKey);
                     Mockito.lenient().when(mock.getName()).thenReturn(namespacedKey.getKey().toUpperCase());
+                    return (T) mock;
+                } catch (Throwable ignored) {}
+            }
+            if (isAttributeRegistry()) {
+                try {
+                    org.bukkit.attribute.Attribute mock = Mockito.mock(org.bukkit.attribute.Attribute.class);
+                    Mockito.lenient().when(mock.getKey()).thenReturn(namespacedKey);
+                    Mockito.lenient().when(mock.key()).thenReturn(namespacedKey);
                     return (T) mock;
                 } catch (Throwable ignored) {}
             }

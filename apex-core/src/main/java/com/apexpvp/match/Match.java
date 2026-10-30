@@ -12,7 +12,9 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,14 +86,29 @@ public abstract class Match {
 
             // 2. Teleport to designated team spawn
             Location spawn = (participant.getTeamIndex() == 0) ? arena.getSpawnA() : arena.getSpawnB();
-            player.teleport(spawn);
+            if (spawn.getWorld() != null) {
+                // Ensure spawn chunk is loaded synchronously so Paper does not drop or cancel the teleport
+                int cx = spawn.getBlockX() >> 4;
+                int cz = spawn.getBlockZ() >> 4;
+                spawn.getWorld().getChunkAt(cx, cz);
+            }
+
+            // Reset flight, velocity and switch to SURVIVAL prior to teleport
+            player.setGameMode(GameMode.SURVIVAL);
+            player.setAllowFlight(false);
+            player.setFlying(false);
+            player.setVelocity(new Vector(0, 0, 0));
+            player.setFallDistance(0.0f);
+
+            boolean teleported = player.teleport(spawn, PlayerTeleportEvent.TeleportCause.PLUGIN);
+            if (!teleported) {
+                player.teleportAsync(spawn, PlayerTeleportEvent.TeleportCause.PLUGIN);
+            }
 
             // 3. Apply Kit with custom hotbar layout
             PlayerProfile profile = plugin.getProfileManager().getProfile(player.getUniqueId());
             String customLayout = (profile != null) ? profile.getCustomHotbar(kit.getId()) : null;
             kit.apply(player, customLayout);
-
-            player.setGameMode(GameMode.SURVIVAL);
         }
 
         // Transition to COUNTDOWN
