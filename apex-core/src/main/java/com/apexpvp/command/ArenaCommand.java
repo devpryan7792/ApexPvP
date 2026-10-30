@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -51,6 +52,7 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>ApexPvP Arena Management</bold></gradient>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena list</yellow> <gray>- View all configured templates & instances</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena create <id> [displayName] [radius]</yellow> <gray>- Create arena from WorldEdit selection</gray>"));
+            sender.sendMessage(TextUtil.parse("<yellow>/arena import <file> <id> [displayName]</yellow> <gray>- Import map from maps/ folder</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena tp <template></yellow> <gray>- Teleport into arena platform</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena setspawn <template> <a|b|spec></yellow> <gray>- Update spawn point</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena reload</yellow> <gray>- Reload arenas.yml and regenerate platforms</gray>"));
@@ -60,6 +62,52 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase();
 
         switch (sub) {
+            case "import" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(TextUtil.parse("<red>Usage: /arena import <schematicFile> <id> [displayName]"));
+                    return true;
+                }
+                String fileName = args[1];
+                String id = args[2].toLowerCase();
+                String displayName = args.length >= 4 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length)) : id;
+
+                if (plugin.getArenaManager().getTemplate(id) != null) {
+                    sender.sendMessage(TextUtil.parse("<red>An arena template with ID '<yellow>" + id + "</yellow>' already exists!"));
+                    return true;
+                }
+
+                File schemFile = plugin.getArenaManager().getSchematicFile(fileName);
+                if (schemFile == null) {
+                    sender.sendMessage(TextUtil.parse("<red>Schematic file '<yellow>" + fileName +
+                            "</yellow>' not found in <white>plugins/ApexPvP/maps/</white>!"));
+                    List<String> available = plugin.getArenaManager().getAvailableSchematicFiles();
+                    if (!available.isEmpty()) {
+                        sender.sendMessage(TextUtil.parse("<gray>Available maps in folder: <gold>" + String.join(", ", available) + "</gold>"));
+                    }
+                    return true;
+                }
+
+                ArenaBounds bounds = com.apexpvp.integration.worldedit.WorldEditHook.getSchematicBounds(schemFile);
+                if (bounds == null) {
+                    bounds = new ArenaBounds(-35, 0, -35, 35, 40, 35);
+                }
+
+                int halfX = bounds.getMaxX() * 2 / 3;
+                ArenaTemplate.SpawnPoint spawnA = new ArenaTemplate.SpawnPoint(-halfX, 1.0, 0.5, -90.0f, 0.0f);
+                ArenaTemplate.SpawnPoint spawnB = new ArenaTemplate.SpawnPoint(halfX, 1.0, 0.5, 90.0f, 0.0f);
+                ArenaTemplate.SpawnPoint spec = new ArenaTemplate.SpawnPoint(0.5, 15.0, 0.5, 0.0f, 45.0f);
+
+                boolean created = plugin.getArenaManager().createTemplate(id, displayName, bounds, spawnA, spawnB, spec, fileName);
+                if (created) {
+                    sender.sendMessage(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>MAP IMPORTED!</bold></gradient> Imported <gold>" +
+                            fileName + "</gold> as arena <gold>" + displayName + "</gold> (<yellow>" + id + "</yellow>)!\n" +
+                            "<gray>Next step: Set your spawns with <yellow>/arena setspawn " + id + " <a|b|spec></yellow>."));
+                } else {
+                    sender.sendMessage(TextUtil.parse("<red>Failed to register imported arena template."));
+                }
+                return true;
+            }
+
             case "create" -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage(TextUtil.parse("<red>Only players can create an arena."));
@@ -254,6 +302,7 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             completions.add("list");
             completions.add("create");
+            completions.add("import");
             completions.add("tp");
             completions.add("setspawn");
             completions.add("reload");
@@ -261,6 +310,11 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
             for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) {
                 completions.add(t.getId());
             }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("import")) {
+            completions.addAll(plugin.getArenaManager().getAvailableSchematicFiles());
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("import")) {
+            String guess = args[1].replace(".schem", "").replace(".schematic", "").toLowerCase();
+            completions.add(guess);
         } else if (args.length == 3 && args[0].equalsIgnoreCase("setspawn")) {
             completions.add("a");
             completions.add("b");

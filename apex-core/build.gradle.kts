@@ -34,6 +34,12 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("io.papermc.paper:paper-api:26.3.build.231-stable")
     testImplementation("com.github.MilkBowl:VaultAPI:1.7.1")
+    testImplementation("com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.9.2") {
+        isTransitive = false
+    }
+    testImplementation("com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.9.2") {
+        isTransitive = false
+    }
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

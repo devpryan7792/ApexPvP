@@ -119,6 +119,7 @@ public class ArenaCommandTest {
         assertNotNull(subCompletions);
         assertTrue(subCompletions.contains("list"));
         assertTrue(subCompletions.contains("create"));
+        assertTrue(subCompletions.contains("import"));
         assertTrue(subCompletions.contains("tp"));
         assertTrue(subCompletions.contains("setspawn"));
         assertTrue(subCompletions.contains("reload"));
@@ -126,6 +127,11 @@ public class ArenaCommandTest {
         List<String> tpCompletions = command.onTabComplete(sender, mockCmd, "arena", new String[]{"tp", ""});
         assertNotNull(tpCompletions);
         assertTrue(tpCompletions.contains("colosseum"));
+
+        when(arenaManager.getAvailableSchematicFiles()).thenReturn(List.of("glacier.schem", "temple.schematic"));
+        List<String> importCompletions = command.onTabComplete(sender, mockCmd, "arena", new String[]{"import", ""});
+        assertNotNull(importCompletions);
+        assertTrue(importCompletions.contains("glacier.schem"));
 
         List<String> spawnCompletions = command.onTabComplete(sender, mockCmd, "arena", new String[]{"setspawn", "colosseum", ""});
         assertNotNull(spawnCompletions);
@@ -159,5 +165,23 @@ public class ArenaCommandTest {
         boolean result = command.onCommand(player, mockCmd, "arena", new String[]{"create", "colosseum"});
         assertTrue(result);
         verify(arenaManager, never()).createTemplate(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Verify /arena import registers map from maps folder")
+    void testArenaImport() {
+        CommandSender sender = mock(CommandSender.class);
+        when(sender.hasPermission("apexpvp.arena.admin")).thenReturn(true);
+
+        java.io.File mockFile = mock(java.io.File.class);
+        when(mockFile.exists()).thenReturn(true);
+        when(arenaManager.getSchematicFile("castle.schem")).thenReturn(mockFile);
+        when(arenaManager.getTemplate("castle")).thenReturn(null);
+        when(arenaManager.createTemplate(eq("castle"), eq("Castle Arena"), any(), any(), any(), any(), eq("castle.schem")))
+                .thenReturn(true);
+
+        boolean result = command.onCommand(sender, mockCmd, "arena", new String[]{"import", "castle.schem", "castle", "Castle Arena"});
+        assertTrue(result);
+        verify(arenaManager).createTemplate(eq("castle"), eq("Castle Arena"), any(), any(), any(), any(), eq("castle.schem"));
     }
 }

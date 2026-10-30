@@ -197,11 +197,27 @@ Spectators can watch live matches from the spectator platform and place wagers o
 
 ---
 
-## Admin Guide: In-Game Arena Creation
+## Admin Guide: Custom Maps & In-Game Arena Creation
 
-Server Admins and OPs can create, configure, and register brand-new arena maps entirely in-game using WorldEdit without touching YAML files.
+Server Admins and OPs can upload custom schematic maps or create brand-new arenas directly in-game without manually editing YAML files.
 
-### 1. Creating a Map with WorldEdit (`//wand`)
+### 1. Uploading Custom Maps (`plugins/ApexPvP/maps/`)
+Admins can upload any `.schem` or `.schematic` file directly to the server:
+1. Drop your schematic file into `plugins/ApexPvP/maps/` (e.g. `castle.schem`).
+2. In-game, run:
+   ```text
+   /arena import castle.schem castle "Castle Arena"
+   ```
+   *The command autocompletes all uploaded maps in your folder, calculates the bounding box, registers the template, saves to `arenas.yml`, and pastes instance 0.*
+3. Set your spawns:
+   ```text
+   /arena setspawn castle a
+   /arena setspawn castle b
+   /arena setspawn castle spec
+   ```
+4. The arena is instantly live and ready for duels!
+
+### 2. Creating a Map with WorldEdit (`//wand`)
 1. Equip the WorldEdit wand:
    ```text
    //wand
@@ -281,6 +297,7 @@ Stand at the exact location and look in the direction you want players to face:
 | Command | Usage | Description |
 | :--- | :--- | :--- |
 | `/arena create` | `/arena create <id> [displayName] [radius]` | Register a new arena from WorldEdit selection or radius |
+| `/arena import` | `/arena import <file> <id> [displayName]` | Import uploaded `.schem`/`.schematic` map from `maps/` folder |
 | `/arena setspawn` | `/arena setspawn <id> <a\|b\|spec>` | Set relative spawn points at your player's exact location |
 | `/arena tp` | `/arena tp <id>` | Teleport to the spectator spawn of an arena template |
 | `/arena list` | `/arena list` | View all loaded arena templates and active game instances |

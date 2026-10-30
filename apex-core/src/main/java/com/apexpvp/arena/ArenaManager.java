@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
@@ -44,13 +46,21 @@ public class ArenaManager {
     private ArenaScaleSupervisor scaleSupervisor;
     private final int baselineY = 64;
 
+    private final File mapsFolder;
+    private final File schematicsFolder;
+
     public ArenaManager(@NotNull JavaPlugin plugin) {
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
         this.arenaWorldName = plugin.getConfig().getString("arenas.world-name", "apex_arenas");
+        this.mapsFolder = new File(plugin.getDataFolder(), "maps");
+        this.schematicsFolder = new File(plugin.getDataFolder(), "schematics");
     }
 
     public void initialize() {
         plugin.getLogger().info("Initializing Multi-Arena Engine...");
+
+        // 0. Ensure maps/ and schematics/ directories and default schematics exist
+        ensureDefaultDirectoriesAndSchematics();
 
         // 1. Initialize or Load Void World
         this.arenaWorld = loadOrCreateVoidWorld();
@@ -110,6 +120,88 @@ public class ArenaManager {
         world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
         world.setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, false);
         world.setPVP(true);
+    }
+
+    private void ensureDefaultDirectoriesAndSchematics() {
+        if (!mapsFolder.exists()) {
+            mapsFolder.mkdirs();
+        }
+        if (!schematicsFolder.exists()) {
+            schematicsFolder.mkdirs();
+        }
+
+        File readme = new File(mapsFolder, "README.txt");
+        if (!readme.exists()) {
+            try {
+                java.nio.file.Files.writeString(readme.toPath(),
+                        "=== ApexPvP Maps & Schematics Directory ===\n" +
+                        "Upload your custom arena schematics here (.schem or .schematic format)!\n\n" +
+                        "How to import a map in-game:\n" +
+                        "1. Drop your .schem or .schematic file into this 'maps/' folder (e.g. 'castle.schem').\n" +
+                        "2. In-game as OP/admin, run:\n" +
+                        "   /arena import castle.schem castle \"Castle Arena\"\n" +
+                        "3. The plugin will automatically detect dimensions, register the arena template,\n" +
+                        "   save it to arenas.yml, and paste instance #0.\n" +
+                        "4. Fine-tune your spawn points:\n" +
+                        "   - Stand at player 1 spawn: /arena setspawn castle a\n" +
+                        "   - Stand at player 2 spawn: /arena setspawn castle b\n" +
+                        "   - Fly to spectator spawn: /arena setspawn castle spec\n" +
+                        "5. Your arena will immediately appear in the /duel arena selection menu!\n"
+                );
+            } catch (Exception ignored) {}
+        }
+
+        String[] defaultSchems = {"celestial.schem", "glaciem.schem", "spiritual.schematic"};
+        for (String schem : defaultSchems) {
+            File targetMaps = new File(mapsFolder, schem);
+            if (!targetMaps.exists()) {
+                try (InputStream in = plugin.getResource("schematics/" + schem)) {
+                    if (in != null) {
+                        java.nio.file.Files.copy(in, targetMaps.toPath());
+                    }
+                } catch (Exception ignored) {}
+            }
+            File targetSchems = new File(schematicsFolder, schem);
+            if (!targetSchems.exists()) {
+                try (InputStream in = plugin.getResource("schematics/" + schem)) {
+                    if (in != null) {
+                        java.nio.file.Files.copy(in, targetSchems.toPath());
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    @NotNull
+    public File getMapsFolder() {
+        return mapsFolder;
+    }
+
+    @NotNull
+    public File getSchematicsFolder() {
+        return schematicsFolder;
+    }
+
+    @Nullable
+    public File getSchematicFile(@NotNull String fileName) {
+        File f1 = new File(mapsFolder, fileName);
+        if (f1.exists()) return f1;
+        File f2 = new File(schematicsFolder, fileName);
+        if (f2.exists()) return f2;
+        return null;
+    }
+
+    public List<String> getAvailableSchematicFiles() {
+        Set<String> files = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        File[] inMaps = mapsFolder.listFiles((dir, name) -> name.endsWith(".schem") || name.endsWith(".schematic"));
+        if (inMaps != null) {
+            for (File f : inMaps) files.add(f.getName());
+        }
+        File[] inSchems = schematicsFolder.listFiles((dir, name) -> name.endsWith(".schem") || name.endsWith(".schematic"));
+        if (inSchems != null) {
+            for (File f : inSchems) files.add(f.getName());
+        }
+        return new ArrayList<>(files);
     }
 
     private void loadTemplates() {
@@ -185,7 +277,7 @@ public class ArenaManager {
     private void allocateInitialInstance(@NotNull ArenaTemplate template) {
         ArenaInstance instance = new ArenaInstance(template, 0, arenaWorld, baselineY, false);
         instance.addChunkTickets(plugin);
-        generateDefaultPlatform(instance);
+        buildArenaPlatform(instance);
         instances.get(template.getId()).add(instance);
     }
 
@@ -195,9 +287,30 @@ public class ArenaManager {
         int nextIndex = list.size();
         ArenaInstance dynamicInstance = new ArenaInstance(template, nextIndex, arenaWorld, baselineY, true);
         dynamicInstance.addChunkTickets(plugin);
-        generateDefaultPlatform(dynamicInstance);
+        buildArenaPlatform(dynamicInstance);
         list.add(dynamicInstance);
         return dynamicInstance;
+    }
+
+    public void buildArenaPlatform(@NotNull ArenaInstance instance) {
+        boolean pasted = false;
+        String schemName = instance.getTemplate().getSchematicFile();
+        if (schemName != null) {
+            File schemFile = getSchematicFile(schemName);
+            if (schemFile != null && com.apexpvp.integration.worldedit.WorldEditHook.isAvailable()) {
+                int centerX = (instance.getBounds().getMinX() + instance.getBounds().getMaxX()) / 2;
+                int centerZ = (instance.getBounds().getMinZ() + instance.getBounds().getMaxZ()) / 2;
+                pasted = com.apexpvp.integration.worldedit.WorldEditHook.pasteSchematic(
+                        schemFile, instance.getWorld(), centerX, instance.getOriginY(), centerZ
+                );
+                if (pasted) {
+                    plugin.getLogger().info("Successfully pasted schematic [" + schemName + "] for instance " + instance.getInstanceIdentifier());
+                }
+            }
+        }
+        if (!pasted) {
+            generateDefaultPlatform(instance);
+        }
     }
 
     /**
@@ -522,6 +635,14 @@ public class ArenaManager {
                                   @NotNull ArenaTemplate.SpawnPoint spawnA,
                                   @NotNull ArenaTemplate.SpawnPoint spawnB,
                                   @NotNull ArenaTemplate.SpawnPoint specSpawn) {
+        return createTemplate(id, displayName, bounds, spawnA, spawnB, specSpawn, id + ".schem");
+    }
+
+    public boolean createTemplate(@NotNull String id, @NotNull String displayName, @NotNull ArenaBounds bounds,
+                                  @NotNull ArenaTemplate.SpawnPoint spawnA,
+                                  @NotNull ArenaTemplate.SpawnPoint spawnB,
+                                  @NotNull ArenaTemplate.SpawnPoint specSpawn,
+                                  @Nullable String schematicFileName) {
         String key = id.toLowerCase();
         if (templates.containsKey(key)) {
             return false;
@@ -530,7 +651,7 @@ public class ArenaManager {
         int nextId = getNextAvailableTemplateId();
         ArenaTemplate template = new ArenaTemplate(
                 nextId, key, displayName, bounds, spawnA, spawnB, specSpawn,
-                true, true, 64, 84, key + ".schem"
+                true, true, 64, 84, schematicFileName
         );
 
         templates.put(key, template);
