@@ -204,6 +204,11 @@ public class ArenaManager {
      * Generates a solid arena combat platform with bedrock subfloor, checkered stone surface,
      * and perimeter glass boundary walls.
      */
+    /**
+     * Generates a high-aesthetic competitive combat platform with bedrock subfloor,
+     * themed floor patterns, recessed glowing light channels, center combat medallion,
+     * and architectural corner pylons.
+     */
     public void generateDefaultPlatform(@NotNull ArenaInstance instance) {
         World world = instance.getWorld();
         ArenaBounds bounds = instance.getBounds();
@@ -212,73 +217,199 @@ public class ArenaManager {
         int maxX = bounds.getMaxX();
         int minZ = bounds.getMinZ();
         int maxZ = bounds.getMaxZ();
+        int centerX = (minX + maxX) / 2;
+        int centerZ = (minZ + maxZ) / 2;
 
-        plugin.getLogger().info("Generating platform for arena [" + instance.getInstanceIdentifier() + "] at Y=" + originY + "...");
+        plugin.getLogger().info("Generating aesthetic platform for arena [" + instance.getInstanceIdentifier() + "] at Y=" + originY + "...");
 
         String theme = instance.getTemplate().getId().toLowerCase();
+
+        // Special handling for Sumo ring
+        if (theme.contains("sumo")) {
+            int radius = Math.min((maxX - minX) / 2, (maxZ - minZ) / 2);
+            if (radius > 10) radius = 8;
+            int radiusSq = radius * radius;
+            int outerBorderSq = (radius - 1) * (radius - 1);
+
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    int distSq = (x - centerX) * (x - centerX) + (z - centerZ) * (z - centerZ);
+                    if (distSq <= radiusSq) {
+                        world.getBlockAt(x, originY - 1, z).setType(Material.BEDROCK, false);
+                        if (distSq >= outerBorderSq) {
+                            world.getBlockAt(x, originY, z).setType(Material.OAK_PLANKS, false);
+                        } else if (distSq <= 4) {
+                            world.getBlockAt(x, originY, z).setType(Material.RED_CONCRETE, false);
+                        } else {
+                            world.getBlockAt(x, originY, z).setType(((x + z) % 2 == 0) ? Material.WHITE_CONCRETE : Material.RED_CONCRETE, false);
+                        }
+                        for (int y = originY + 1; y <= originY + 8; y++) {
+                            world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                        }
+                    } else {
+                        for (int y = originY - 1; y <= originY + 8; y++) {
+                            world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
         Material edgeMat;
         Material floorMat1;
         Material floorMat2;
+        Material lightMat;
         Material glassMat;
+        Material centerCore;
+        Material pylonBase;
+        Material pylonPillar;
+        Material pylonTop;
 
         switch (theme) {
             case "temple" -> {
                 edgeMat = Material.SMOOTH_QUARTZ;
                 floorMat1 = Material.QUARTZ_BRICKS;
                 floorMat2 = Material.SMOOTH_QUARTZ;
+                lightMat = Material.SEA_LANTERN;
                 glassMat = Material.WHITE_STAINED_GLASS;
+                centerCore = Material.CHISELED_QUARTZ_BLOCK;
+                pylonBase = Material.CHISELED_QUARTZ_BLOCK;
+                pylonPillar = Material.QUARTZ_PILLAR;
+                pylonTop = Material.SEA_LANTERN;
             }
             case "netherforge" -> {
                 edgeMat = Material.POLISHED_BLACKSTONE;
                 floorMat1 = Material.POLISHED_BLACKSTONE_BRICKS;
                 floorMat2 = Material.CRACKED_POLISHED_BLACKSTONE_BRICKS;
+                lightMat = Material.SHROOMLIGHT;
                 glassMat = Material.RED_STAINED_GLASS;
+                centerCore = Material.GILDED_BLACKSTONE;
+                pylonBase = Material.CHISELED_NETHER_BRICKS;
+                pylonPillar = Material.POLISHED_BLACKSTONE_BRICKS;
+                pylonTop = Material.SOUL_LANTERN;
             }
             case "cybervoid" -> {
                 edgeMat = Material.OBSIDIAN;
-                floorMat1 = Material.PURPUR_BLOCK;
-                floorMat2 = Material.END_STONE_BRICKS;
+                floorMat1 = Material.POLISHED_BLACKSTONE_BRICKS;
+                floorMat2 = Material.CRYING_OBSIDIAN;
+                lightMat = Material.SEA_LANTERN;
                 glassMat = Material.CYAN_STAINED_GLASS;
+                centerCore = Material.LODESTONE;
+                pylonBase = Material.CHISELED_POLISHED_BLACKSTONE;
+                pylonPillar = Material.OBSIDIAN;
+                pylonTop = Material.END_ROD;
             }
             case "desertdune" -> {
                 edgeMat = Material.CUT_SANDSTONE;
                 floorMat1 = Material.SMOOTH_SANDSTONE;
-                floorMat2 = Material.CHISELED_SANDSTONE;
+                floorMat2 = Material.ORANGE_TERRACOTTA;
+                lightMat = Material.GLOWSTONE;
                 glassMat = Material.ORANGE_STAINED_GLASS;
+                centerCore = Material.CHISELED_SANDSTONE;
+                pylonBase = Material.CUT_SANDSTONE;
+                pylonPillar = Material.CHISELED_SANDSTONE;
+                pylonTop = Material.LANTERN;
             }
             case "frostpeak" -> {
                 edgeMat = Material.BLUE_ICE;
                 floorMat1 = Material.PACKED_ICE;
                 floorMat2 = Material.SNOW_BLOCK;
+                lightMat = Material.SEA_LANTERN;
                 glassMat = Material.LIGHT_BLUE_STAINED_GLASS;
+                centerCore = Material.BLUE_ICE;
+                pylonBase = Material.DARK_PRISMARINE;
+                pylonPillar = Material.PACKED_ICE;
+                pylonTop = Material.END_ROD;
             }
-            default -> {
+            default -> { // Colosseum and generic
                 edgeMat = Material.STONE_BRICKS;
                 floorMat1 = Material.SMOOTH_STONE;
-                floorMat2 = Material.STONE;
+                floorMat2 = Material.POLISHED_ANDESITE;
+                lightMat = Material.GLOWSTONE;
                 glassMat = Material.TINTED_GLASS;
+                centerCore = Material.CHISELED_STONE_BRICKS;
+                pylonBase = Material.CHISELED_STONE_BRICKS;
+                pylonPillar = Material.STONE_BRICKS;
+                pylonTop = Material.LANTERN;
             }
         }
 
+        // Build combat arena
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 // Bedrock foundation beneath the floor to prevent breaking through
                 world.getBlockAt(x, originY - 1, z).setType(Material.BEDROCK, false);
 
-                boolean isEdge = (x == minX || x == maxX || z == minZ || z == maxZ);
-                if (isEdge) {
+                int distEdge = Math.min(Math.min(x - minX, maxX - x), Math.min(z - minZ, maxZ - z));
+                int distCenterSq = (x - centerX) * (x - centerX) + (z - centerZ) * (z - centerZ);
+
+                boolean isPerimeter = (distEdge == 0);
+                boolean isLightChannel = (distEdge == 2);
+                boolean isCorner = ((x == minX || x == minX + 1) || (x == maxX || x == maxX - 1)) &&
+                                  ((z == minZ || z == minZ + 1) || (z == maxZ || z == maxZ - 1));
+
+                if (isPerimeter) {
                     world.getBlockAt(x, originY, z).setType(edgeMat, false);
                     for (int y = originY + 1; y <= originY + 4; y++) {
                         world.getBlockAt(x, y, z).setType(glassMat, false);
                     }
+                    for (int y = originY + 5; y <= originY + 10; y++) {
+                        world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                    }
+                } else if (isLightChannel) {
+                    // Recessed glowing light channel covered by theme glass
+                    world.getBlockAt(x, originY - 1, z).setType(lightMat, false);
+                    world.getBlockAt(x, originY, z).setType(glassMat, false);
+                    for (int y = originY + 1; y <= originY + 10; y++) {
+                        world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                    }
+                } else if (distCenterSq == 0) {
+                    // Center combat medallion core
+                    world.getBlockAt(x, originY, z).setType(centerCore, false);
+                    for (int y = originY + 1; y <= originY + 10; y++) {
+                        world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                    }
+                } else if (distCenterSq <= 2) {
+                    // Center ring glow
+                    world.getBlockAt(x, originY - 1, z).setType(lightMat, false);
+                    world.getBlockAt(x, originY, z).setType(glassMat, false);
+                    for (int y = originY + 1; y <= originY + 10; y++) {
+                        world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                    }
+                } else if (distCenterSq <= 8) {
+                    // Center medallion accent border
+                    world.getBlockAt(x, originY, z).setType(edgeMat, false);
+                    for (int y = originY + 1; y <= originY + 10; y++) {
+                        world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                    }
                 } else {
+                    // Combat floor pattern
                     Material mat = ((x + z) % 2 == 0) ? floorMat1 : floorMat2;
                     world.getBlockAt(x, originY, z).setType(mat, false);
-                    for (int y = originY + 1; y <= originY + 4; y++) {
+                    for (int y = originY + 1; y <= originY + 10; y++) {
                         world.getBlockAt(x, y, z).setType(Material.AIR, false);
                     }
                 }
             }
+        }
+
+        // Construct 4 Thematic Corner Pylon Towers
+        int[][] corners = new int[][]{
+                {minX + 1, minZ + 1},
+                {minX + 1, maxZ - 1},
+                {maxX - 1, minZ + 1},
+                {maxX - 1, maxZ - 1}
+        };
+
+        for (int[] corner : corners) {
+            int cx = corner[0];
+            int cz = corner[1];
+            world.getBlockAt(cx, originY + 1, cz).setType(pylonBase, false);
+            world.getBlockAt(cx, originY + 2, cz).setType(pylonPillar, false);
+            world.getBlockAt(cx, originY + 3, cz).setType(pylonPillar, false);
+            world.getBlockAt(cx, originY + 4, cz).setType(lightMat, false);
+            world.getBlockAt(cx, originY + 5, cz).setType(pylonTop, false);
         }
     }
 
@@ -484,6 +615,17 @@ public class ArenaManager {
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save arena template " + template.getId() + " to arenas.yml", e);
         }
+    }
+
+    public void reloadTemplates() {
+        loadTemplates();
+        for (ArenaTemplate template : templates.values()) {
+            instances.computeIfAbsent(template.getId(), k -> new CopyOnWriteArrayList<>());
+            if (instances.get(template.getId()).isEmpty()) {
+                allocateInitialInstance(template);
+            }
+        }
+        plugin.getLogger().info("Reloaded arena templates. Active templates: " + templates.size());
     }
 
     public void shutdown() {

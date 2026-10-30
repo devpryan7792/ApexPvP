@@ -18,11 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class ArenaThemedPlatformTest {
 
     private static final List<String> ICONIC_ARENAS = List.of(
-            "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak"
+            "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak", "sumo"
     );
 
     @Test
-    @DisplayName("Verify all 6 iconic arena templates are defined in arenas.yml with unique IDs")
+    @DisplayName("Verify all iconic arena templates are defined in arenas.yml with unique IDs")
     void testIconicArenaTemplatesDefined() {
         InputStream stream = getClass().getClassLoader().getResourceAsStream("arenas.yml");
         assertNotNull(stream, "arenas.yml must exist in resources");
@@ -38,7 +38,7 @@ class ArenaThemedPlatformTest {
             assertNotNull(sec, "Template [" + arenaName + "] must be defined in arenas.yml");
 
             int templateId = sec.getInt("template-id");
-            assertTrue(templateId >= 1 && templateId <= 6, "Template ID for " + arenaName + " must be between 1 and 6, got: " + templateId);
+            assertTrue(templateId >= 1 && templateId <= 10, "Template ID for " + arenaName + " must be between 1 and 10, got: " + templateId);
             assertTrue(registeredIds.add(templateId), "Duplicate template-id detected: " + templateId);
 
             assertNotNull(sec.getString("display-name"), "display-name must not be null for " + arenaName);
@@ -47,7 +47,7 @@ class ArenaThemedPlatformTest {
             assertNotNull(sec.getConfigurationSection("spawns.spectator"), "spectator spawn must exist for " + arenaName);
         }
 
-        assertEquals(6, registeredIds.size(), "All 6 iconic templates must be uniquely registered");
+        assertEquals(ICONIC_ARENAS.size(), registeredIds.size(), "All iconic templates must be uniquely registered");
     }
 
     @Test

@@ -50,7 +50,7 @@ ranked:
 duels:
   request-timeout-seconds: 60
   elo:
-    enabled: true
+    enabled: false
   betting:
     enabled: true
     min-stake: 10.0

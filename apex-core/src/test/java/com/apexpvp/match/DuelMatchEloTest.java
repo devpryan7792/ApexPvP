@@ -61,7 +61,7 @@ public class DuelMatchEloTest {
         when(plugin.getDatabaseManager()).thenReturn(databaseManager);
         when(plugin.getConfig()).thenReturn(config);
 
-        when(config.getBoolean("duels.elo.enabled", true)).thenReturn(true);
+        when(config.getBoolean("duels.elo.enabled", false)).thenReturn(true);
         when(config.getInt("ranked.k-factor", 32)).thenReturn(32);
         when(config.getBoolean("ranked.dynamic-k-factor", true)).thenReturn(true);
         when(config.getBoolean("ranked.economy.require-rankup-fee", false)).thenReturn(false);
@@ -157,7 +157,7 @@ public class DuelMatchEloTest {
     @Test
     @DisplayName("Verify ELO is not modified when duels.elo.enabled is false")
     void testDuelDisabledEloConfig() throws Exception {
-        when(config.getBoolean("duels.elo.enabled", true)).thenReturn(false);
+        when(config.getBoolean("duels.elo.enabled", false)).thenReturn(false);
 
         PlayerProfile winnerProfile = new PlayerProfile(winnerUuid, "WinnerUser", Rank.COPPER_1, 800, 100.0, 0, 0);
         PlayerProfile loserProfile = new PlayerProfile(loserUuid, "LoserUser", Rank.COPPER_1, 800, 100.0, 0, 0);

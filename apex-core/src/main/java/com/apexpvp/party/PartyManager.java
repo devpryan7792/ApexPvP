@@ -4,6 +4,7 @@ import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.arena.ArenaTemplate;
 import com.apexpvp.kit.Kit;
+import com.apexpvp.match.types.RankedTeamMatch;
 import com.apexpvp.match.types.TeamMatch;
 import com.apexpvp.util.TextUtil;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -199,6 +200,61 @@ public class PartyManager {
         match.start();
 
         party.broadcast("<gradient:#00FFAA:#00AAFF><bold>PARTY SPLIT STARTED!</bold></gradient> Red Team vs Blue Team!");
+        return true;
+    }
+
+    public boolean startRankedPartySplit(@NotNull Player leader, @NotNull Kit kit) {
+        Party party = partiesByPlayer.get(leader.getUniqueId());
+        if (party == null || !party.isLeader(leader.getUniqueId())) {
+            TextUtil.sendPrefixed(leader, "<red>Only the party leader can start a Ranked Party Match.");
+            return false;
+        }
+
+        List<Player> onlineMembers = new ArrayList<>();
+        for (UUID memberUuid : party.getMembers()) {
+            Player p = Bukkit.getPlayer(memberUuid);
+            if (p != null && p.isOnline()) {
+                if (plugin.getMatchManager().isInMatch(p)) {
+                    TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " is already in a match!");
+                    return false;
+                }
+                onlineMembers.add(p);
+            }
+        }
+
+        if (onlineMembers.size() < 2) {
+            TextUtil.sendPrefixed(leader, "<red>You need at least 2 online party members for Team Ranked!");
+            return false;
+        }
+
+        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+        if (template == null) {
+            TextUtil.sendPrefixed(leader, "<red>No arenas are configured.");
+            return false;
+        }
+
+        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        if (arenaInstance == null) {
+            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available. Auto-scaling instance, please try in a moment...");
+            plugin.getArenaManager().requestScaling(template.getId());
+            return false;
+        }
+
+        Collections.shuffle(onlineMembers);
+
+        List<Player> teamRed = new ArrayList<>();
+        List<Player> teamBlue = new ArrayList<>();
+
+        for (int i = 0; i < onlineMembers.size(); i++) {
+            if (i % 2 == 0) teamRed.add(onlineMembers.get(i));
+            else teamBlue.add(onlineMembers.get(i));
+        }
+
+        RankedTeamMatch match = new RankedTeamMatch(plugin, arenaInstance, kit, teamRed, teamBlue, "Team Red", "Team Blue");
+        plugin.getMatchManager().registerMatch(match);
+        match.start();
+
+        party.broadcast("<gradient:#00FFAA:#00AAFF><bold>RANKED TEAM MATCH STARTED!</bold></gradient> Competitive ELO is on the line!");
         return true;
     }
 }

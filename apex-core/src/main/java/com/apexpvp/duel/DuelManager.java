@@ -77,7 +77,8 @@ public class DuelManager {
         // Send rich clickable invite to target
         String inviteMessage = "<gradient:#FFAA00:#FF5555><bold>DUEL CHALLENGE!</bold></gradient> <gold>" + challenger.getName() +
                 "</gold> challenged you with kit <yellow>" + kit.getDisplayName() + "</yellow>" + stakeInfo + " in <aqua>" + template.getDisplayName() + "</aqua>!\n" +
-                "<click:run_command:'/duel accept " + challenger.getName() + "'><hover:show_text:'<green>Click to accept duel'><green><bold>[ACCEPT]</bold></green></hover></click> " +
+                "<click:run_command:'/duel preview " + challenger.getName() + "'><hover:show_text:'<yellow>Click to view kit & arena details before deciding'><gold><bold>[PREVIEW & ACCEPT]</bold></gold></hover></click>  " +
+                "<click:run_command:'/duel accept " + challenger.getName() + "'><hover:show_text:'<green>Click to accept duel immediately'><green><bold>[ACCEPT]</bold></green></hover></click>  " +
                 "<click:run_command:'/duel decline " + challenger.getName() + "'><hover:show_text:'<red>Click to decline duel'><red><bold>[DECLINE]</bold></red></hover></click>";
 
         TextUtil.sendPrefixed(target, inviteMessage);
@@ -142,5 +143,16 @@ public class DuelManager {
         for (Map<UUID, DuelRequest> map : incomingRequests.values()) {
             map.remove(uuid);
         }
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public DuelRequest getPendingRequest(@NotNull Player target, @NotNull Player challenger) {
+        Map<UUID, DuelRequest> requests = incomingRequests.get(target.getUniqueId());
+        if (requests == null) return null;
+        DuelRequest req = requests.get(challenger.getUniqueId());
+        if (req != null && !req.isExpired()) {
+            return req;
+        }
+        return null;
     }
 }

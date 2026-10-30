@@ -49,6 +49,26 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase();
 
+        // 0. Preview Challenge
+        if (sub.equals("preview")) {
+            if (args.length < 2) {
+                TextUtil.sendPrefixed(player, "<red>Usage: /duel preview <player>");
+                return true;
+            }
+            Player challenger = Bukkit.getPlayer(args[1]);
+            if (challenger == null || !challenger.isOnline()) {
+                TextUtil.sendPrefixed(player, "<red>Player is not online.");
+                return true;
+            }
+            com.apexpvp.duel.DuelRequest req = plugin.getDuelManager().getPendingRequest(player, challenger);
+            if (req == null) {
+                TextUtil.sendPrefixed(player, "<red>No pending duel challenge from <gold>" + challenger.getName() + "</gold>.");
+                return true;
+            }
+            plugin.getDuelPreviewGUI().open(player, challenger, req);
+            return true;
+        }
+
         // 1. Accept Challenge
         if (sub.equals("accept")) {
             if (args.length < 2) {
@@ -98,7 +118,18 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
 
         // When only target is provided, open interactive GUI for kit selection
         if (args.length == 1) {
-            plugin.getDuelKitGUI().open(player, target);
+            plugin.getDuelKitGUI().open(player, target, 0.0);
+            return true;
+        }
+
+        // If args[1] is a numeric stake: /duel <target> <stake>
+        double parsedStake = -1.0;
+        try {
+            parsedStake = Double.parseDouble(args[1]);
+        } catch (NumberFormatException ignored) {}
+
+        if (parsedStake >= 0.0) {
+            plugin.getDuelKitGUI().open(player, target, parsedStake);
             return true;
         }
 
@@ -122,13 +153,7 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-        if (template == null) {
-            TextUtil.sendPrefixed(player, "<red>No arenas are configured.");
-            return true;
-        }
-
-        plugin.getDuelManager().sendChallenge(player, target, kit, template, stake);
+        plugin.getDuelArenaGUI().open(player, target, kit, stake);
         return true;
     }
 
@@ -141,6 +166,7 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             completions.add("accept");
             completions.add("decline");
+            completions.add("preview");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (!p.getName().equalsIgnoreCase(sender.getName())) {
                     completions.add(p.getName());

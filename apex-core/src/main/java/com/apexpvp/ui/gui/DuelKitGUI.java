@@ -37,11 +37,13 @@ public class DuelKitGUI implements Listener {
     public static final class DuelKitGUIHolder implements InventoryHolder {
         private final UUID targetUuid;
         private final String targetName;
+        private final double stake;
         private Inventory inventory;
 
-        public DuelKitGUIHolder(@NotNull UUID targetUuid, @NotNull String targetName) {
+        public DuelKitGUIHolder(@NotNull UUID targetUuid, @NotNull String targetName, double stake) {
             this.targetUuid = Objects.requireNonNull(targetUuid, "targetUuid cannot be null");
             this.targetName = Objects.requireNonNull(targetName, "targetName cannot be null");
+            this.stake = stake;
         }
 
         @Override
@@ -62,6 +64,10 @@ public class DuelKitGUI implements Listener {
         public String getTargetName() {
             return targetName;
         }
+
+        public double getStake() {
+            return stake;
+        }
     }
 
     private final ApexPvPPlugin plugin;
@@ -73,10 +79,14 @@ public class DuelKitGUI implements Listener {
     }
 
     public void open(@NotNull Player challenger, @NotNull Player target) {
+        open(challenger, target, 0.0);
+    }
+
+    public void open(@NotNull Player challenger, @NotNull Player target, double stake) {
         Collection<Kit> allKits = plugin.getKitManager().getAllKits();
         int size = allKits.size() > 7 ? 36 : 27;
 
-        DuelKitGUIHolder holder = new DuelKitGUIHolder(target.getUniqueId(), target.getName());
+        DuelKitGUIHolder holder = new DuelKitGUIHolder(target.getUniqueId(), target.getName(), stake);
         Inventory inv = Bukkit.createInventory(holder, size, TextUtil.parse("<dark_gray>Duel <gold>" + target.getName() + "</gold> » Select Kit"));
         holder.setInventory(inv);
 
@@ -178,14 +188,8 @@ public class DuelKitGUI implements Listener {
                 return;
             }
 
-            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-            if (template == null) {
-                TextUtil.sendPrefixed(challenger, "<red>No arenas are configured.");
-                return;
-            }
-
             challenger.playSound(challenger.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
-            plugin.getDuelManager().sendChallenge(challenger, target, kit, template, 0.0);
+            plugin.getDuelArenaGUI().open(challenger, target, kit, holder.getStake());
         }
     }
 

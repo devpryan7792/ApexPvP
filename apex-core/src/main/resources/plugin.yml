@@ -52,6 +52,14 @@ commands:
     description: Open the visual kit layout editor to customize your hotbar
     usage: /kiteditor [kit]
     aliases: [editkit, layout]
+  arena:
+    description: Arena management, instance inspection, and spawn configuration
+    usage: /arena <list|tp|setspawn|reload>
+    permission: apexpvp.arena.admin
+  ranked:
+    description: Open the competitive Ranked Matchmaking menu
+    usage: /ranked
+    aliases: [rmatch]
 
 permissions:
   apexpvp.admin:

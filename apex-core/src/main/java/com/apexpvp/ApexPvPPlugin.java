@@ -9,6 +9,7 @@ import com.apexpvp.profile.ProfileManager;
 import com.apexpvp.profile.listener.ProfileListener;
 import com.apexpvp.util.TextUtil;
 import com.apexpvp.command.ApexCommand;
+import com.apexpvp.command.ArenaCommand;
 import com.apexpvp.command.BetCommand;
 import com.apexpvp.command.DuelCommand;
 import com.apexpvp.command.KitCommand;
@@ -16,6 +17,7 @@ import com.apexpvp.command.LeaderboardCommand;
 import com.apexpvp.command.PartyCommand;
 import com.apexpvp.command.PracticeCommand;
 import com.apexpvp.command.QueueCommand;
+import com.apexpvp.command.RankedCommand;
 import com.apexpvp.command.RankupCommand;
 import com.apexpvp.command.StatsCommand;
 import com.apexpvp.duel.DuelManager;
@@ -30,6 +32,9 @@ import com.apexpvp.ui.bossbar.LobbyBossBarManager;
 import com.apexpvp.ui.gui.KitGUI;
 import com.apexpvp.ui.gui.KitEditorGUI;
 import com.apexpvp.ui.gui.DuelKitGUI;
+import com.apexpvp.ui.gui.DuelArenaGUI;
+import com.apexpvp.ui.gui.DuelPreviewGUI;
+import com.apexpvp.ui.gui.RankedMenuGUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -64,6 +69,9 @@ public class ApexPvPPlugin extends JavaPlugin {
     private KitGUI kitGUI;
     private KitEditorGUI kitEditorGUI;
     private DuelKitGUI duelKitGUI;
+    private DuelArenaGUI duelArenaGUI;
+    private DuelPreviewGUI duelPreviewGUI;
+    private RankedMenuGUI rankedMenuGUI;
     private LobbyBossBarManager lobbyBossBarManager;
 
     private boolean citizensAvailable;
@@ -114,6 +122,12 @@ public class ApexPvPPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(kitEditorGUI, this);
         this.duelKitGUI = new DuelKitGUI(this);
         getServer().getPluginManager().registerEvents(duelKitGUI, this);
+        this.duelArenaGUI = new DuelArenaGUI(this);
+        getServer().getPluginManager().registerEvents(duelArenaGUI, this);
+        this.duelPreviewGUI = new DuelPreviewGUI(this);
+        getServer().getPluginManager().registerEvents(duelPreviewGUI, this);
+        this.rankedMenuGUI = new RankedMenuGUI(this);
+        getServer().getPluginManager().registerEvents(rankedMenuGUI, this);
 
         // 6. Initialize Lobby BossBar Manager
         this.lobbyBossBarManager = new LobbyBossBarManager(this);
@@ -292,6 +306,16 @@ public class ApexPvPPlugin extends JavaPlugin {
             getCommand("kiteditor").setExecutor(kitCmd);
             getCommand("kiteditor").setTabCompleter(kitCmd);
         }
+        if (getCommand("arena") != null) {
+            ArenaCommand arenaCmd = new ArenaCommand(this);
+            getCommand("arena").setExecutor(arenaCmd);
+            getCommand("arena").setTabCompleter(arenaCmd);
+        }
+        if (getCommand("ranked") != null) {
+            RankedCommand rankedCmd = new RankedCommand(this);
+            getCommand("ranked").setExecutor(rankedCmd);
+            getCommand("ranked").setTabCompleter(rankedCmd);
+        }
     }
 
     @NotNull
@@ -389,6 +413,21 @@ public class ApexPvPPlugin extends JavaPlugin {
     @NotNull
     public DuelKitGUI getDuelKitGUI() {
         return duelKitGUI;
+    }
+
+    @NotNull
+    public DuelArenaGUI getDuelArenaGUI() {
+        return duelArenaGUI;
+    }
+
+    @NotNull
+    public DuelPreviewGUI getDuelPreviewGUI() {
+        return duelPreviewGUI;
+    }
+
+    @NotNull
+    public RankedMenuGUI getRankedMenuGUI() {
+        return rankedMenuGUI;
     }
 
     @NotNull

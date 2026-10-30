@@ -62,7 +62,7 @@ public class DuelMatch extends Match {
         String loserName = (loser != null) ? loser.getName() : (loserProfile != null ? loserProfile.getUsername() : "Loser");
 
         int eloDelta = 0;
-        boolean eloEnabled = plugin.getConfig().getBoolean("duels.elo.enabled", true);
+        boolean eloEnabled = plugin.getConfig().getBoolean("duels.elo.enabled", false);
         if (eloEnabled && winnerProfile != null && loserProfile != null) {
             int winnerOldElo = winnerProfile.getElo();
             int loserOldElo = loserProfile.getElo();
