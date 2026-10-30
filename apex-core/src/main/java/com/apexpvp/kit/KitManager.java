@@ -210,6 +210,8 @@ public class KitManager {
         }
         return switch (clean) {
             case "HEAL", "HEALING_2", "HEAL_2", "INSTANT_HEAL", "INSTANT_HEAL_2" -> PotionType.STRONG_HEALING;
+            case "HARM", "HARMING_2", "HARM_2", "INSTANT_HARM", "INSTANT_DAMAGE", "INSTANT_DAMAGE_2" -> PotionType.STRONG_HARMING;
+            case "HARMING", "HARM_1", "INSTANT_DAMAGE_1" -> PotionType.HARMING;
             case "SPEED", "SPEED_2", "SWIFTNESS_2" -> PotionType.STRONG_SWIFTNESS;
             case "FIRE_RES", "FIRE_RESISTANCE_LONG", "FIRE_RES_8" -> PotionType.LONG_FIRE_RESISTANCE;
             case "STRENGTH_2" -> PotionType.STRONG_STRENGTH;
@@ -251,6 +253,8 @@ public class KitManager {
                 case "flame" -> Enchantment.getByKey(NamespacedKey.minecraft("flame"));
                 case "infinity" -> Enchantment.getByKey(NamespacedKey.minecraft("infinity"));
                 case "efficiency", "eff" -> Enchantment.getByKey(NamespacedKey.minecraft("efficiency"));
+                case "mending", "mend" -> Enchantment.getByKey(NamespacedKey.minecraft("mending"));
+                case "lunge" -> Enchantment.getByKey(NamespacedKey.minecraft("lunge"));
                 default -> null;
             };
         } catch (Throwable ignored) {

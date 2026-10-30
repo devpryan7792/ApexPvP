@@ -25,7 +25,7 @@ class DefaultKitsIntegrityTest {
         ConfigurationSection kitsSec = config.getConfigurationSection("kits");
         assertNotNull(kitsSec);
 
-        String[] expectedKits = {"nodebuff", "gapple", "combo", "sumo", "builduhc", "debuff", "custom"};
+        String[] expectedKits = {"nodebuff", "gapple", "combo", "sumo", "builduhc", "debuff", "custom", "spear"};
         for (String kitId : expectedKits) {
             assertTrue(kitsSec.contains(kitId), "Kit " + kitId + " must exist in kits.yml");
             ConfigurationSection kSec = kitsSec.getConfigurationSection(kitId);
@@ -162,4 +162,63 @@ class DefaultKitsIntegrityTest {
         assertNotNull(slot3);
         assertTrue(slot3.contains("SPLASH_POTION") && slot3.contains("STRONG_POISON"));
     }
+
+    @Test
+    @DisplayName("Verify Spear kit composition contains spear, 3 gapples, pearls, totem, harming and healing potions")
+    void testSpearKitComposition() {
+        InputStream stream = getClass().getClassLoader().getResourceAsStream("kits.yml");
+        assertNotNull(stream);
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
+        ConfigurationSection spear = config.getConfigurationSection("kits.spear");
+        assertNotNull(spear);
+
+        assertEquals("NETHERITE_SPEAR", spear.getString("icon"));
+        assertEquals("TOTEM_OF_UNDYING", spear.getString("offhand"));
+
+        // Verify armor
+        ItemStack helmet = KitManager.parseItem(spear.getString("armor.helmet"));
+        ItemStack chest = KitManager.parseItem(spear.getString("armor.chestplate"));
+        ItemStack legs = KitManager.parseItem(spear.getString("armor.leggings"));
+        ItemStack boots = KitManager.parseItem(spear.getString("armor.boots"));
+        assertNotNull(helmet);
+        assertNotNull(chest);
+        assertNotNull(legs);
+        assertNotNull(boots);
+        assertEquals(Material.NETHERITE_HELMET, helmet.getType());
+        assertEquals(Material.NETHERITE_CHESTPLATE, chest.getType());
+        assertEquals(Material.NETHERITE_LEGGINGS, legs.getType());
+        assertEquals(Material.NETHERITE_BOOTS, boots.getType());
+
+        ConfigurationSection main = spear.getConfigurationSection("main-items");
+        assertNotNull(main);
+
+        // Slot 0: Netherite Spear
+        ItemStack spearItem = KitManager.parseItem(main.getString("0"));
+        assertNotNull(spearItem);
+        assertEquals(Material.NETHERITE_SPEAR, spearItem.getType());
+
+        // Slot 1: Exactly 3 non-enchanted golden apples
+        ItemStack gapples = KitManager.parseItem(main.getString("1"));
+        assertNotNull(gapples);
+        assertEquals(Material.GOLDEN_APPLE, gapples.getType());
+        assertEquals(3, gapples.getAmount());
+
+        // Slot 2: Ender pearls
+        ItemStack pearls = KitManager.parseItem(main.getString("2"));
+        assertNotNull(pearls);
+        assertEquals(Material.ENDER_PEARL, pearls.getType());
+        assertEquals(16, pearls.getAmount());
+
+        // Check for harming and healing potions
+        boolean hasHarming = false;
+        boolean hasHealing = false;
+        for (String key : main.getKeys(false)) {
+            String val = main.getString(key);
+            if (val != null && val.contains("STRONG_HARMING")) hasHarming = true;
+            if (val != null && val.contains("STRONG_HEALING")) hasHealing = true;
+        }
+        assertTrue(hasHarming, "Spear kit must contain Strong Harming splash potions");
+        assertTrue(hasHealing, "Spear kit must contain Strong Healing splash potions");
+    }
 }
+
