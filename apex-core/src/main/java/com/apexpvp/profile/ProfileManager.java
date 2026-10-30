@@ -349,18 +349,59 @@ public class ProfileManager {
     }
 
     private void startAutoSaveTask() {
-        // Runs every 5 minutes asynchronously
-        Bukkit.getAsyncScheduler().runAtFixedRate(plugin, task -> {
-            int savedCount = 0;
-            for (PlayerProfile profile : profileCache.values()) {
-                if (profile.isDirty()) {
-                    saveProfile(profile);
-                    savedCount++;
+        try {
+            // Runs every 5 minutes asynchronously
+            Bukkit.getAsyncScheduler().runAtFixedRate(plugin, task -> {
+                int savedCount = 0;
+                for (PlayerProfile profile : profileCache.values()) {
+                    if (profile.isDirty()) {
+                        saveProfile(profile);
+                        savedCount++;
+                    }
                 }
+                if (savedCount > 0) {
+                    plugin.getLogger().info("Auto-saved " + savedCount + " dirty player profiles.");
+                }
+            }, 5, 5, java.util.concurrent.TimeUnit.MINUTES);
+        } catch (Throwable ignored) {
+            // Server not initialized (e.g. in headless unit tests)
+        }
+    }
+
+    /**
+     * Checks if a player's current ELO qualifies them for a higher rank tier,
+     * and automatically promotes them with title and sound celebrations.
+     */
+    public boolean checkAndApplyAutoRankup(@NotNull PlayerProfile profile, @Nullable Player player) {
+        Rank currentRank = profile.getRank();
+        Rank targetRank = Rank.fromElo(profile.getElo());
+        if (targetRank.ordinal() > currentRank.ordinal()) {
+            profile.setRank(targetRank);
+            if (player != null && player.isOnline()) {
+                net.kyori.adventure.title.Title title = net.kyori.adventure.title.Title.title(
+                        com.apexpvp.util.TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>RANK PROMOTION!</bold></gradient>"),
+                        com.apexpvp.util.TextUtil.parse("<yellow>You reached " + targetRank.getDisplayName() + "!</yellow>"),
+                        net.kyori.adventure.title.Title.Times.times(
+                                java.time.Duration.ofMillis(100),
+                                java.time.Duration.ofMillis(2500),
+                                java.time.Duration.ofMillis(500)
+                        )
+                );
+                player.showTitle(title);
+                try {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                } catch (Throwable ignored) {}
+                com.apexpvp.util.TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>AUTOMATIC PROMOTION!</bold></gradient> Your ELO reached <gold>" +
+                        profile.getElo() + "</gold>, advancing you to " + targetRank.getMiniMessageDisplay() + "!");
             }
-            if (savedCount > 0) {
-                plugin.getLogger().info("Auto-saved " + savedCount + " dirty player profiles.");
+            if (plugin instanceof com.apexpvp.ApexPvPPlugin apex && apex.getLobbyBossBarManager() != null && player != null) {
+                apex.getLobbyBossBarManager().update(player);
             }
-        }, 5, 5, java.util.concurrent.TimeUnit.MINUTES);
+            try {
+                plugin.getServer().broadcast(com.apexpvp.util.TextUtil.prefixed("<gold>" + profile.getUsername() + "</gold> reached rank " + targetRank.getMiniMessageDisplay() + "<reset>!"));
+            } catch (Throwable ignored) {}
+            return true;
+        }
+        return false;
     }
 }

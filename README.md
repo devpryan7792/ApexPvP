@@ -63,16 +63,21 @@ When someone challenges you, clickable buttons appear directly in chat:
 
 Ranked matchmaking is where your ELO rating, win streaks, and competitive badges are on the line.
 
-### 1. Opening the Ranked Hub
+### 1. Opening the Ranked Hub & Matchmaking
 ```text
-/ranked
+/ranked                  - Open competitive Ranked Hub (Solo 1v1 / Team 2v2)
+/ranked menu             - Open the Ranked Hub GUI directly
+/ranked queue <kit>      - Jump directly into matchmaking queue for a kit
+/ranked <kit>            - Quick shortcut (e.g. /ranked spear)
+/ranked leave            - Exit matchmaking queue safely
+/ranked status           - Check current queue time & ±ELO search radius
 ```
+- **Transparent Aliases:** `/queue <kit>` and `/leavequeue` continue to work seamlessly.
 - **Competitive Profile Banner:** Displays your current Tier, Division, ELO rating, active Win Streak, and Win Rate.
 - **Solo Ranked (1v1):** Click to select your kit and enter the competitive queue.
 - **Team Ranked (2v2):** Form a party of 2 (`/party create`, `/party invite <friend>`), then click to enter team queue.
-- **Leave Queue:** Click the barrier button (or type `/leavequeue`) to safely exit matchmaking.
 
-### 2. The 18-Division Hierarchy
+### 2. The 18-Division Hierarchy & Automatic Rankups
 Players progress through 6 tiers, each divided into 3 divisions:
 
 ```text
@@ -84,7 +89,12 @@ Emerald I, II, III     (1600 - 1799 ELO)
 Netherite I, II, III   (1800+ ELO)
 ```
 
-- **Advancing Tiers:** When you reach the required ELO and win milestones, run `/rankup` to promote and unlock higher tier badges.
+- **Automatic Rank Promotion:** The moment your ELO satisfies the next rank tier threshold upon winning a ranked match, you are **automatically promoted**!
+  - Full-screen celebration Title (`RANK PROMOTION!`)
+  - Sound effect (`UI_TOAST_CHALLENGE_COMPLETE`)
+  - Server-wide broadcast announcement
+  - Real-time Lobby Boss Bar badge update
+- **Manual Check (`/rankup`):** Running `/rankup` at any time displays your current rank and the exact remaining ELO needed for your next automatic promotion (or triggers it immediately if pending).
 - **Win Streak Multipliers:** Consecutive wins grant coin multipliers:
   - 3 Wins: **1.25x Coins**
   - 5 Wins: **1.50x Coins**
@@ -275,15 +285,15 @@ Stand at the exact location and look in the direction you want players to face:
 | `/duel accept` | `/duel accept <player>` | Accept a pending duel challenge |
 | `/duel decline` | `/duel decline <player>` | Decline a pending duel challenge |
 | `/duel preview` | `/duel preview <player>` | Open the interactive preview card showing kit, arena, and stakes |
-| `/ranked` | `/ranked` | Open the competitive Ranked Hub (Solo 1v1 / Team 2v2 queues) |
-| `/queue` | `/queue <kit>` | Join the ranked matchmaking queue via command |
-| `/leavequeue` | `/leavequeue` | Leave the ranked matchmaking queue |
+| `/ranked` | `/ranked [menu\|queue <kit>\|leave\|status]` | Competitive hub, direct kit queuing, leaving, and status |
+| `/queue` | `/queue <kit>` | Quick alias to join ranked matchmaking queue |
+| `/leavequeue` | `/leavequeue` | Quick alias to exit ranked matchmaking queue |
 | `/practice` | `/practice <kit> [difficulty]` | Start a PvE battle against an AI practice bot |
 | `/kits` | `/kits` | Open the visual kit showcase and preview menu |
 | `/kiteditor` | `/kiteditor <kit>` | Open the custom hotbar layout editor for a kit |
 | `/stats` | `/stats [player]` | View your or another player's ELO, rank, streaks, and win rate |
 | `/top` | `/top [elo\|wins\|streak\|<kit>]` | View top-10 cached competitive leaderboards |
-| `/rankup` | `/rankup` | Promote to the next rank tier when criteria are met |
+| `/rankup` | `/rankup` | Check current rank and exact remaining ELO needed for promotion |
 | `/party create` | `/party create` | Create a new party |
 | `/party invite` | `/party invite <player>` | Invite a player to your party |
 | `/party accept` | `/party accept <leader>` | Accept an invite to join a party |

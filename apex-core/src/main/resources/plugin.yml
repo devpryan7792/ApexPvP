@@ -57,8 +57,8 @@ commands:
     usage: /arena <create|list|tp|setspawn|reload>
     permission: apexpvp.arena.admin
   ranked:
-    description: Open the competitive Ranked Matchmaking menu
-    usage: /ranked
+    description: Competitive ranked matchmaking hub, direct kit queuing, and status
+    usage: /ranked [menu|queue <kit>|leave|status|<kit>]
     aliases: [rmatch]
 
 permissions:

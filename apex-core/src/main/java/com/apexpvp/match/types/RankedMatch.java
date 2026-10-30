@@ -76,19 +76,8 @@ public class RankedMatch extends Match {
         lStats.incrementLosses();
         lStats.incrementDeaths();
 
-        // Check Rank Progression
-        Rank newRank = Rank.fromElo(winnerNewElo);
-        if (newRank.ordinal() > winnerProfile.getRank().ordinal()) {
-            boolean requireRankupFee = plugin.getConfig().getBoolean("ranked.economy.require-rankup-fee", true);
-            if (!requireRankupFee) {
-                winnerProfile.setRank(newRank);
-                broadcast("<gradient:#00FFAA:#00AAFF><bold>RANK UP!</bold></gradient> <gold>" + winnerProfile.getUsername() + "</gold> reached " + newRank.getMiniMessageDisplay() + "!");
-            } else {
-                if (winner != null) {
-                    winner.sendMessage(plugin.getConfig().getString("rank.threshold-reached", "<green>You unlocked rank threshold for " + newRank.getDisplayName() + "! Use /rankup."));
-                }
-            }
-        }
+        // Automatic Rank Progression
+        plugin.getProfileManager().checkAndApplyAutoRankup(winnerProfile, winner);
 
         // Update streaks
         int winStreak = winnerProfile.incrementStreak();

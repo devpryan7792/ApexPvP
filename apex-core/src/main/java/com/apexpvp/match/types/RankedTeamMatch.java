@@ -105,21 +105,10 @@ public class RankedTeamMatch extends Match {
             int winStreak = prof.incrementStreak();
             prof.resetLossStreak();
 
-            // Rank Progression
-            Rank newRank = Rank.fromElo(newElo);
-            if (newRank.ordinal() > prof.getRank().ordinal()) {
-                if (!requireRankupFee) {
-                    prof.setRank(newRank);
-                    broadcast("<gradient:#00FFAA:#00AAFF><bold>RANK UP!</bold></gradient> <gold>" + prof.getUsername() + "</gold> reached " + newRank.getMiniMessageDisplay() + "!");
-                } else {
-                    Player p = Bukkit.getPlayer(prof.getUuid());
-                    if (p != null) {
-                        p.sendMessage(TextUtil.parse(plugin.getConfig().getString("rank.threshold-reached", "<green>You unlocked rank threshold for " + newRank.getDisplayName() + "! Use /rankup.")));
-                    }
-                }
-            }
-
+            // Automatic Rank Progression
             Player p = Bukkit.getPlayer(prof.getUuid());
+            plugin.getProfileManager().checkAndApplyAutoRankup(prof, p);
+
             if (p != null) {
                 TextUtil.sendPrefixed(p, "<green>+" + eloDelta + " ELO <gray>(Rating: " + newElo + ")");
             }

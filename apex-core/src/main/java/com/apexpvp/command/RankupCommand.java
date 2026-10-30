@@ -4,8 +4,6 @@ import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.profile.PlayerProfile;
 import com.apexpvp.profile.Rank;
 import com.apexpvp.util.TextUtil;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -42,6 +40,11 @@ public class RankupCommand implements CommandExecutor {
             return true;
         }
 
+        boolean promoted = plugin.getProfileManager().checkAndApplyAutoRankup(profile, player);
+        if (promoted) {
+            return true;
+        }
+
         Rank currentRank = profile.getRank();
         Rank nextRank = currentRank.getNextRank();
 
@@ -51,40 +54,10 @@ public class RankupCommand implements CommandExecutor {
         }
 
         int currentElo = profile.getElo();
-        if (currentElo < nextRank.getEloThreshold()) {
-            TextUtil.sendPrefixed(player, "<red>You need <gold><req_elo></gold> ELO to unlock <rank_display><red> (Current: <yellow><cur_elo></yellow> ELO).",
-                    Placeholder.parsed("req_elo", String.valueOf(nextRank.getEloThreshold())),
-                    Placeholder.parsed("rank_display", nextRank.getDisplayName()),
-                    Placeholder.parsed("cur_elo", String.valueOf(currentElo)));
-            return true;
-        }
-
-        double cost = nextRank.getRankupCost();
-        if (cost > 0.0) {
-            Economy economy = plugin.getEconomy();
-            if (economy != null) {
-                if (!economy.has(player, cost)) {
-                    TextUtil.sendPrefixed(player, "<red>You need <gold><cost></gold> coins to rank up to <rank_display><red>!",
-                            Placeholder.parsed("cost", String.valueOf(cost)),
-                            Placeholder.parsed("rank_display", nextRank.getDisplayName()));
-                    return true;
-                }
-                var res = economy.withdrawPlayer(player, cost);
-                if (!res.transactionSuccess()) {
-                    TextUtil.sendPrefixed(player, "<red>Failed to process rankup transaction.");
-                    return true;
-                }
-            }
-        }
-
-        // Apply Promotion
-        profile.setRank(nextRank);
-        if (plugin.getLobbyBossBarManager() != null) {
-            plugin.getLobbyBossBarManager().update(player);
-        }
-        TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>PROMOTION SUCCESSFUL!</bold></gradient> You advanced to " + nextRank.getMiniMessageDisplay() + "!");
-        plugin.getServer().broadcast(TextUtil.prefixed("<gold>" + player.getName() + "</gold> promoted to " + nextRank.getMiniMessageDisplay() + "<reset>!"));
-
+        int diff = Math.max(0, nextRank.getEloThreshold() - currentElo);
+        TextUtil.sendPrefixed(player, "<yellow>Rankups are automatic! <gray>You are currently " + currentRank.getMiniMessageDisplay() +
+                "<gray>. Reach <gold>" + nextRank.getEloThreshold() + " ELO</gold> (<yellow>" + diff + "</yellow> more ELO) to automatically advance to " +
+                nextRank.getMiniMessageDisplay() + "<gray>!");
         return true;
     }
 }

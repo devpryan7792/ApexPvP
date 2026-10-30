@@ -139,6 +139,11 @@ public class QueueManager implements Runnable {
         return playerTickets.containsKey(uuid);
     }
 
+    @org.jetbrains.annotations.Nullable
+    public QueueTicket getTicket(@NotNull UUID uuid) {
+        return playerTickets.get(uuid);
+    }
+
     @Override
     public void run() {
         long now = System.currentTimeMillis();

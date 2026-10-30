@@ -260,13 +260,18 @@ public class ApexPvPPlugin extends JavaPlugin {
             getCommand("duel").setExecutor(duelCmd);
             getCommand("duel").setTabCompleter(duelCmd);
         }
+        RankedCommand rankedCmd = new RankedCommand(this);
+        if (getCommand("ranked") != null) {
+            getCommand("ranked").setExecutor(rankedCmd);
+            getCommand("ranked").setTabCompleter(rankedCmd);
+        }
         if (getCommand("queue") != null) {
-            QueueCommand queueCmd = new QueueCommand(this);
-            getCommand("queue").setExecutor(queueCmd);
-            getCommand("queue").setTabCompleter(queueCmd);
+            getCommand("queue").setExecutor(rankedCmd);
+            getCommand("queue").setTabCompleter(rankedCmd);
         }
         if (getCommand("leavequeue") != null) {
-            getCommand("leavequeue").setExecutor(new QueueCommand(this));
+            getCommand("leavequeue").setExecutor(rankedCmd);
+            getCommand("leavequeue").setTabCompleter(rankedCmd);
         }
         if (getCommand("party") != null) {
             PartyCommand partyCmd = new PartyCommand(this);
@@ -310,11 +315,6 @@ public class ApexPvPPlugin extends JavaPlugin {
             ArenaCommand arenaCmd = new ArenaCommand(this);
             getCommand("arena").setExecutor(arenaCmd);
             getCommand("arena").setTabCompleter(arenaCmd);
-        }
-        if (getCommand("ranked") != null) {
-            RankedCommand rankedCmd = new RankedCommand(this);
-            getCommand("ranked").setExecutor(rankedCmd);
-            getCommand("ranked").setTabCompleter(rankedCmd);
         }
     }
 
