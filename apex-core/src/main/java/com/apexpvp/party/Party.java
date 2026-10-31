@@ -69,6 +69,7 @@ public class Party {
     }
 
     public void broadcast(@NotNull String miniMessage) {
+        if (Bukkit.getServer() == null) return;
         for (UUID uuid : members) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null && p.isOnline()) {

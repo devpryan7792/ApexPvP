@@ -29,8 +29,8 @@
 | **Open Player Hub** | `/duels` | Central 36-slot dashboard for matchmaking, stats, leaderboards, and privacy settings. |
 | **Duel a Player** | `/duel <player>` | Pick a kit and arena, challenge with optional coin stakes or physical items. |
 | **Wager Items in Escrow** | `/duel <player> item` | Open the 54-slot shared anti-scam escrow window to wager physical items. |
-| **Competitive Ranked** | `/ranked` | Open Ranked Hub to view your ELO and queue Solo (1v1) or Team (2v2). |
-| **Party Management** | `/party` | Open the 27-slot GUI to manage party members, send 1-click invites, and scrimmage. |
+| **Competitive Ranked** | `/ranked` | Open Ranked Hub to view your ELO and queue Solo (1v1) or Team (2v2 - 4v4). |
+| **Party Management** | `/party` | Open 27-slot GUI for party queues, direct party duels (2v2 - 4v4), and scrimmages. |
 | **Fight a Practice Bot** | `/practice <kit> [difficulty]` | Warm up solo anytime against an AI combatant. |
 | **Customize Kit Hotbar** | `/kiteditor <kit>` | Drag and drop weapons, pearls, and potions into your preferred slots. |
 | **Admin In-Game Editor** | `/apex editor` | Comprehensive GUI to configure arenas, modes, kits, and toggles without YAML editing. |
@@ -46,7 +46,7 @@ The `/duels` command opens a unified, interactive dashboard accessible to every 
 ```
 
 ### Dashboard Features
-- **Matchmaking Portals:** Quick-queue into Solo (1v1) and Team (2v2) competitive or casual matches with 1 click.
+- **Matchmaking Portals:** Quick-queue into Solo (1v1) and Team (2v2 - 4v4) competitive or casual matches with 1 click.
 - **Kit Layout Customizer:** Quick link to the Hotbar Layout Editor for any kit.
 - **Personal Statistics:** Displays current ELO, rank badge, win streak, win rate, and total matches.
 - **Top Leaderboards:** Live top-10 leaderboard rankings.
@@ -93,7 +93,7 @@ The physical item betting system enables safe, scam-proof high-stakes wagers:
 
 ## Competitive Ranked League
 
-Ranked matchmaking pits players against each other in competitive 1v1 and 2v2 modes with ELO ratings, divisions, and automated promotions.
+Ranked matchmaking pits players against each other in competitive 1v1 and Team (2v2, 3v3, 4v4) modes with ELO ratings, divisions, and automated promotions. Parties of 2 to 4 members are automatically matched against parties of identical size.
 
 ### 1. Ranked Hub & Matchmaking
 ```text
@@ -132,28 +132,53 @@ Netherite I, II, III   (1800+ ELO)
 
 ## Parties & Team Scrimmages
 
-Form parties for 2v2 team queues or instant intra-party scrimmages.
+Form parties for competitive 2v2, 3v3, and 4v4 team queues, direct party-vs-party challenges, or instant intra-party scrimmages.
 
 ### 1. Interactive Party GUI (`/party`)
 Running `/party` (with no arguments), `/party menu`, or `/party gui` opens the 27-slot Party Management interface:
 - **Member Roster:** Displays player heads for each party member with their rank, role, and ping.
 - **Leader Crown Badge:** Indicates the party leader.
-- **Open Slots:** Visual empty slot indicators showing remaining capacity.
-- **Party Scrimmage Button:** Instantly divides the party into Team 1 vs Team 2 and starts a private match.
+- **Open Slots:** Visual empty slot indicators showing remaining capacity (up to 8 members for full 4v4 scrimmages).
+- **Party Scrimmage Button:** Instantly divides the party into Team 1 vs Team 2 (supports 2v2, 3v3, and 4v4) and starts a private match.
 - **Disband / Leave Buttons:** Quick 1-click controls to exit or disband the party.
 
-### 2. Visual Party Invite GUI (`/party invite`)
+### 2. Team Matchmaking Queues (2v2 - 4v4)
+- Party leaders with **2 to 4 members** can queue the entire party via the `/ranked` GUI (Slot 15: `Team Ranked (2v2 - 4v4)`).
+- **Matchmaking Isolation:** A 2v2 party only fights another 2v2 party, 3v3 fights 3v3, and 4v4 fights 4v4.
+- Party leaders and all members are registered into the queue ticket simultaneously with automatic fee verification and lateral spawn offsets.
+
+### 3. Direct Party Duels (`/party duel`)
+Party leaders can challenge other parties directly to a team duel without queueing:
+```text
+/party duel <targetLeader> [kit]       - Challenge another party of the same size (2v2, 3v3, or 4v4)
+/party accept-duel <senderLeader>      - Accept a pending party duel challenge
+/party decline-duel <senderLeader>     - Decline a pending party duel challenge
+```
+- Both parties must have between 2 and 4 players, and both party member counts must match exactly.
+- Challenge invitations feature clickable chat buttons (`[ACCEPT DUEL]` / `[DECLINE]`).
+
+### 4. Party Split Scrimmages (`/party split`)
+Intra-party scrimmages let friends battle each other within the same party:
+```text
+/party split [kit]                     - Split the party evenly into Team 1 vs Team 2
+```
+- Supports **4 players** (2v2), **6 players** (3v3), or **8 players** (4v4).
+- Odd party sizes or sizes exceeding 8 players are rejected with clear error feedback.
+
+### 5. Visual Party Invite GUI & Commands
 - Running `/party invite` with no target player opens a 54-slot GUI displaying skulls of all online server players.
 - Clicking any player's head sends an invitation instantly.
 
-### 3. Command Alternatives
 ```text
-/party create                - Create a party
-/party invite <player>       - Invite a player directly via command
-/party accept <leader>       - Accept a party invite
-/party split                 - Split party into teams for a scrimmage
-/party leave                 - Leave current party
-/party disband               - Disband party (leader only)
+/party create                          - Create a party
+/party invite [player]                 - Open player picker GUI or invite directly
+/party accept <leader>                 - Accept a party invite
+/party duel <leader> [kit]             - Challenge an opposing party to a duel (2v2 - 4v4)
+/party accept-duel <leader>            - Accept a party duel
+/party decline-duel <leader>           - Decline a party duel
+/party split [kit]                     - Split party into teams for a scrimmage (2v2 - 4v4)
+/party leave                           - Leave current party (auto-dequeues if queued)
+/party disband                         - Disband party (leader only)
 ```
 
 ---
@@ -324,13 +349,16 @@ Server administrators can manage the entire duels system visually without manual
 | `/duel accept` | `/duel accept <player>` | Accept a pending duel challenge |
 | `/duel decline` | `/duel decline <player>` | Decline a pending duel challenge |
 | `/duel preview` | `/duel preview <player>` | Open preview card showing kit, arena, and stakes |
-| `/ranked` | `/ranked [menu\|queue <kit>\|leave\|status]` | Competitive hub, matchmaking queues, and status |
+| `/ranked` | `/ranked [menu\|queue <kit>\|leave\|status]` | Competitive hub, Solo (1v1) and Team (2v2 - 4v4) queues |
 | `/queue` | `/queue <kit>` | Quick alias to join ranked queue |
 | `/leavequeue` | `/leavequeue` | Quick alias to exit ranked queue |
 | `/party` | `/party [menu\|gui]` | Open interactive 27-slot Party GUI |
 | `/party invite` | `/party invite [player]` | Open online player picker GUI or invite by name |
-| `/party split` | `/party split` | Split party into two teams for an instant scrimmage |
-| `/party leave` | `/party leave` | Leave current party |
+| `/party duel` | `/party duel <leader> [kit]` | Challenge an opposing party to a duel (2v2 - 4v4) |
+| `/party accept-duel` | `/party accept-duel <leader>` | Accept an incoming party-vs-party challenge |
+| `/party decline-duel` | `/party decline-duel <leader>` | Decline an incoming party-vs-party challenge |
+| `/party split` | `/party split [kit]` | Split party into two teams for scrimmage (2v2, 3v3, 4v4) |
+| `/party leave` | `/party leave` | Leave current party (auto-dequeues if queued) |
 | `/party disband` | `/party disband` | Disband party (leader only) |
 | `/practice` | `/practice <kit> [difficulty]` | Start battle against an AI practice bot |
 | `/kits` | `/kits` | Open the visual kit showcase menu |

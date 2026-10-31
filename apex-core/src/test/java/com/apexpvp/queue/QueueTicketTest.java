@@ -112,4 +112,62 @@ class QueueTicketTest {
             }
         }
     }
+
+    @Test
+    @DisplayName("Verify 2v2, 3v3, and 4v4 team queue matching and team size isolation")
+    void testTeamQueueMatching2v2_3v3_4v4() {
+        UUID l1 = UUID.randomUUID();
+        UUID l2 = UUID.randomUUID();
+        java.util.List<UUID> party1_2v2 = java.util.List.of(l1, UUID.randomUUID());
+        java.util.List<UUID> party2_2v2 = java.util.List.of(l2, UUID.randomUUID());
+
+        QueueTicket ticket2v2_A = new QueueTicket(l1, party1_2v2, 2, "nodebuff", 1000, 50);
+        QueueTicket ticket2v2_B = new QueueTicket(l2, party2_2v2, 2, "nodebuff", 1030, 50);
+
+        // 2v2 vs 2v2 matches within ELO window
+        assertTrue(ticket2v2_A.matches(ticket2v2_B), "2v2 parties must match when ELO difference is within range");
+        assertTrue(ticket2v2_B.matches(ticket2v2_A));
+
+        // 3v3 vs 3v3 matches
+        UUID l3 = UUID.randomUUID();
+        UUID l4 = UUID.randomUUID();
+        java.util.List<UUID> party3_3v3 = java.util.List.of(l3, UUID.randomUUID(), UUID.randomUUID());
+        java.util.List<UUID> party4_3v3 = java.util.List.of(l4, UUID.randomUUID(), UUID.randomUUID());
+
+        QueueTicket ticket3v3_A = new QueueTicket(l3, party3_3v3, 3, "nodebuff", 1000, 50);
+        QueueTicket ticket3v3_B = new QueueTicket(l4, party4_3v3, 3, "nodebuff", 1020, 50);
+
+        assertTrue(ticket3v3_A.matches(ticket3v3_B), "3v3 parties must match when within range");
+
+        // 4v4 vs 4v4 matches
+        UUID l5 = UUID.randomUUID();
+        UUID l6 = UUID.randomUUID();
+        java.util.List<UUID> party5_4v4 = java.util.List.of(l5, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        java.util.List<UUID> party6_4v4 = java.util.List.of(l6, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+
+        QueueTicket ticket4v4_A = new QueueTicket(l5, party5_4v4, 4, "nodebuff", 1200, 50);
+        QueueTicket ticket4v4_B = new QueueTicket(l6, party6_4v4, 4, "nodebuff", 1225, 50);
+
+        assertTrue(ticket4v4_A.matches(ticket4v4_B), "4v4 parties must match when within range");
+
+        // Team Size Isolation: 2v2 must NEVER match 3v3, 4v4, or 1v1 solo
+        assertFalse(ticket2v2_A.matches(ticket3v3_A), "2v2 must not match 3v3");
+        assertFalse(ticket2v2_A.matches(ticket4v4_A), "2v2 must not match 4v4");
+        QueueTicket soloTicket = new QueueTicket(UUID.randomUUID(), "nodebuff", 1000, 50);
+        assertFalse(ticket2v2_A.matches(soloTicket), "2v2 must not match 1v1 solo ticket");
+    }
+
+    @Test
+    @DisplayName("Verify team ticket cannot match if overlapping players or same leader")
+    void testOverlappingPartyMembersRejection() {
+        UUID leader = UUID.randomUUID();
+        UUID sharedMember = UUID.randomUUID();
+        java.util.List<UUID> partyA = java.util.List.of(leader, sharedMember);
+        java.util.List<UUID> partyB = java.util.List.of(UUID.randomUUID(), sharedMember);
+
+        QueueTicket ticketA = new QueueTicket(leader, partyA, 2, "spear", 1000, 50);
+        QueueTicket ticketB = new QueueTicket(partyB.get(0), partyB, 2, "spear", 1000, 50);
+
+        assertFalse(ticketA.matches(ticketB), "Must reject matching if any party members overlap");
+    }
 }

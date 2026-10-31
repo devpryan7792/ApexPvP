@@ -5,6 +5,8 @@ import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.arena.ArenaTemplate;
 import com.apexpvp.kit.Kit;
 import com.apexpvp.match.types.RankedMatch;
+import com.apexpvp.match.types.RankedTeamMatch;
+import com.apexpvp.party.Party;
 import com.apexpvp.profile.PlayerProfile;
 import com.apexpvp.util.TextUtil;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -109,29 +111,111 @@ public class QueueManager implements Runnable {
         return true;
     }
 
+    public boolean queueParty(@NotNull Player leader, @NotNull Kit kit) {
+        Party party = plugin.getPartyManager().getParty(leader);
+        if (party == null || !party.isLeader(leader.getUniqueId())) {
+            TextUtil.sendPrefixed(leader, "<red>Only the party leader can queue for Team Ranked!");
+            return false;
+        }
+
+        int teamSize = party.getSize();
+        if (teamSize < 2 || teamSize > 4) {
+            TextUtil.sendPrefixed(leader, "<red>Team Ranked matchmaking supports teams of 2 to 4 players (min 2v2, max 4v4)! Your party has " + teamSize + " members.");
+            return false;
+        }
+
+        List<Player> members = new ArrayList<>();
+        List<UUID> memberUuids = new ArrayList<>();
+        List<PlayerProfile> profiles = new ArrayList<>();
+
+        for (UUID uuid : party.getMembers()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p == null || !p.isOnline()) {
+                TextUtil.sendPrefixed(leader, "<red>All party members must be online to queue for Team Ranked!");
+                return false;
+            }
+            if (plugin.getMatchManager().isInMatch(p)) {
+                TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " is already in an active match!");
+                return false;
+            }
+            if (playerTickets.containsKey(uuid)) {
+                TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " is already in a matchmaking queue!");
+                return false;
+            }
+            PlayerProfile prof = plugin.getProfileManager().getProfile(uuid);
+            if (prof == null) {
+                TextUtil.sendPrefixed(leader, "<red>Profile data for " + p.getName() + " is still loading.");
+                return false;
+            }
+            members.add(p);
+            memberUuids.add(uuid);
+            profiles.add(prof);
+        }
+
+        boolean economyEnabled = plugin.getConfig().getBoolean("ranked.economy.enabled", true);
+        double entryFee = plugin.getConfig().getDouble("ranked.economy.entry-fee", 25.0);
+        Economy economy = plugin.getEconomy();
+
+        if (economyEnabled && entryFee > 0.0 && economy != null) {
+            for (Player p : members) {
+                if (!economy.has(p, entryFee)) {
+                    TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " does not have enough coins (" + entryFee + ") for the entry fee!");
+                    return false;
+                }
+            }
+            for (Player p : members) {
+                economy.withdrawPlayer(p, entryFee);
+            }
+        }
+
+        int avgElo = (int) profiles.stream().mapToInt(PlayerProfile::getElo).average().orElse(1000.0);
+        QueueTicket ticket = new QueueTicket(leader.getUniqueId(), memberUuids, teamSize, kit.getId(), avgElo, initialSearchRange);
+
+        queues.computeIfAbsent(kit.getId(), k -> new CopyOnWriteArrayList<>()).add(ticket);
+        for (UUID u : memberUuids) {
+            playerTickets.put(u, ticket);
+        }
+
+        String modeTag = teamSize + "v" + teamSize;
+        party.broadcast("<green>Party entered <gold>" + modeTag + " " + kit.getDisplayName() + "</gold> Ranked Queue! Team Avg ELO: <yellow>" + avgElo + "</yellow>. Searching...");
+        return true;
+    }
+
     public boolean leaveQueue(@NotNull Player player) {
-        QueueTicket ticket = playerTickets.remove(player.getUniqueId());
+        QueueTicket ticket = playerTickets.get(player.getUniqueId());
         if (ticket == null) {
             TextUtil.sendPrefixed(player, "<red>You are not in a matchmaking queue.");
             return false;
         }
 
-        List<QueueTicket> list = queues.get(ticket.getKitId());
-        if (list != null) {
-            list.remove(ticket);
-        }
+        removeTicket(ticket);
 
-        // Refund entry fee upon manual queue leave
         boolean economyEnabled = plugin.getConfig().getBoolean("ranked.economy.enabled", true);
         double entryFee = plugin.getConfig().getDouble("ranked.economy.entry-fee", 25.0);
-        if (economyEnabled && entryFee > 0.0) {
-            Economy economy = plugin.getEconomy();
-            if (economy != null) {
+        Economy economy = plugin.getEconomy();
+
+        if (ticket.isTeamQueue()) {
+            if (economyEnabled && entryFee > 0.0 && economy != null) {
+                for (UUID u : ticket.getPartyMembers()) {
+                    Player p = Bukkit.getPlayer(u);
+                    if (p != null && p.isOnline()) {
+                        economy.depositPlayer(p, entryFee);
+                    }
+                }
+            }
+            for (UUID u : ticket.getPartyMembers()) {
+                Player p = Bukkit.getPlayer(u);
+                if (p != null && p.isOnline()) {
+                    TextUtil.sendPrefixed(p, "<yellow>Your party left the " + ticket.getTeamSize() + "v" + ticket.getTeamSize() + " matchmaking queue (" + player.getName() + " cancelled).");
+                }
+            }
+        } else {
+            if (economyEnabled && entryFee > 0.0 && economy != null) {
                 economy.depositPlayer(player, entryFee);
             }
+            TextUtil.sendPrefixed(player, "<yellow>You left the matchmaking queue. Entry fee refunded.");
         }
 
-        TextUtil.sendPrefixed(player, "<yellow>You left the matchmaking queue. Entry fee refunded.");
         return true;
     }
 
@@ -189,10 +273,19 @@ public class QueueManager implements Runnable {
                 Player p1 = Bukkit.getPlayer(candidate1.getPlayerId());
                 Player p2 = Bukkit.getPlayer(candidate2.getPlayerId());
 
-                if (p1 == null || !p1.isOnline() || p2 == null || !p2.isOnline()) {
-                    // Purge offline tickets
-                    if (p1 == null || !p1.isOnline()) removeTicket(candidate1);
-                    if (p2 == null || !p2.isOnline()) removeTicket(candidate2);
+                // Validate all members are online for both candidate tickets
+                boolean invalid1 = candidate1.getPartyMembers().stream().anyMatch(u -> {
+                    Player p = Bukkit.getPlayer(u);
+                    return p == null || !p.isOnline();
+                });
+                boolean invalid2 = candidate2.getPartyMembers().stream().anyMatch(u -> {
+                    Player p = Bukkit.getPlayer(u);
+                    return p == null || !p.isOnline();
+                });
+
+                if (invalid1 || invalid2) {
+                    if (invalid1) removeTicket(candidate1);
+                    if (invalid2) removeTicket(candidate2);
                     continue;
                 }
 
@@ -220,23 +313,53 @@ public class QueueManager implements Runnable {
                 removeTicket(candidate1);
                 removeTicket(candidate2);
 
-                TextUtil.sendPrefixed(p1, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
-                        Placeholder.parsed("opponent", p2.getName()),
-                        Placeholder.parsed("opponent_elo", String.valueOf(candidate2.getInitialElo())));
+                if (candidate1.isTeamQueue()) {
+                    List<Player> team0 = new ArrayList<>();
+                    for (UUID u : candidate1.getPartyMembers()) {
+                        Player p = Bukkit.getPlayer(u);
+                        if (p != null) team0.add(p);
+                    }
+                    List<Player> team1 = new ArrayList<>();
+                    for (UUID u : candidate2.getPartyMembers()) {
+                        Player p = Bukkit.getPlayer(u);
+                        if (p != null) team1.add(p);
+                    }
 
-                TextUtil.sendPrefixed(p2, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
-                        Placeholder.parsed("opponent", p1.getName()),
-                        Placeholder.parsed("opponent_elo", String.valueOf(candidate1.getInitialElo())));
+                    int modeSize = candidate1.getTeamSize();
+                    String tag = modeSize + "v" + modeSize;
+                    String matchHeader = "<gradient:#00FF88:#00AAFF><bold>" + tag + " MATCH FOUND!</bold></gradient>";
 
-                RankedMatch match = new RankedMatch(plugin, arenaInstance, kit, p1, p2);
-                plugin.getMatchManager().registerMatch(match);
-                match.start();
+                    for (Player p : team0) {
+                        TextUtil.sendPrefixed(p, matchHeader + " Opponent Team: <gold>Team " + p2.getName() + "</gold> (<yellow>" + candidate2.getInitialElo() + "</yellow> Avg ELO).");
+                    }
+                    for (Player p : team1) {
+                        TextUtil.sendPrefixed(p, matchHeader + " Opponent Team: <gold>Team " + p1.getName() + "</gold> (<yellow>" + candidate1.getInitialElo() + "</yellow> Avg ELO).");
+                    }
+
+                    RankedTeamMatch match = new RankedTeamMatch(plugin, arenaInstance, kit, team0, team1, "Team " + p1.getName(), "Team " + p2.getName());
+                    plugin.getMatchManager().registerMatch(match);
+                    match.start();
+                } else {
+                    TextUtil.sendPrefixed(p1, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
+                            Placeholder.parsed("opponent", p2.getName()),
+                            Placeholder.parsed("opponent_elo", String.valueOf(candidate2.getInitialElo())));
+
+                    TextUtil.sendPrefixed(p2, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
+                            Placeholder.parsed("opponent", p1.getName()),
+                            Placeholder.parsed("opponent_elo", String.valueOf(candidate1.getInitialElo())));
+
+                    RankedMatch match = new RankedMatch(plugin, arenaInstance, kit, p1, p2);
+                    plugin.getMatchManager().registerMatch(match);
+                    match.start();
+                }
             }
         }
     }
 
     private void removeTicket(@NotNull QueueTicket ticket) {
-        playerTickets.remove(ticket.getPlayerId());
+        for (UUID u : ticket.getPartyMembers()) {
+            playerTickets.remove(u);
+        }
         List<QueueTicket> list = queues.get(ticket.getKitId());
         if (list != null) {
             list.remove(ticket);

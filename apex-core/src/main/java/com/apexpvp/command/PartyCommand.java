@@ -80,6 +80,53 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                 }
                 plugin.getPartyManager().acceptInvite(player, leader);
             }
+            case "duel" -> {
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /party duel <targetLeader> [kit]");
+                    return true;
+                }
+                Player target = Bukkit.getPlayer(args[1]);
+                if (target == null || !target.isOnline()) {
+                    TextUtil.sendPrefixed(player, "<red>Player not found or offline.");
+                    return true;
+                }
+                Kit kit = null;
+                if (args.length > 2) {
+                    kit = plugin.getKitManager().getKit(args[2]);
+                }
+                if (kit == null) {
+                    kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
+                    if (kit == null) {
+                        TextUtil.sendPrefixed(player, "<red>No kits configured.");
+                        return true;
+                    }
+                }
+                plugin.getPartyManager().challengeParty(player, target, kit);
+            }
+            case "accept-duel" -> {
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /party accept-duel <senderLeader>");
+                    return true;
+                }
+                Player leader = Bukkit.getPlayer(args[1]);
+                if (leader == null || !leader.isOnline()) {
+                    TextUtil.sendPrefixed(player, "<red>Leader not found or offline.");
+                    return true;
+                }
+                plugin.getPartyManager().acceptPartyDuel(player, leader);
+            }
+            case "decline-duel" -> {
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(player, "<red>Usage: /party decline-duel <senderLeader>");
+                    return true;
+                }
+                Player leader = Bukkit.getPlayer(args[1]);
+                if (leader == null || !leader.isOnline()) {
+                    TextUtil.sendPrefixed(player, "<red>Leader not found or offline.");
+                    return true;
+                }
+                plugin.getPartyManager().declinePartyDuel(player, leader);
+            }
             case "split" -> {
                 Kit kit = null;
                 if (args.length > 1) {
@@ -122,10 +169,11 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
         TextUtil.sendPrefixed(player, "<gradient:#FFAA00:#FF5555><bold>PARTY COMMANDS</bold></gradient>");
         player.sendMessage(TextUtil.parse("<yellow>/party create <gray>- Create a new party"));
         player.sendMessage(TextUtil.parse("<yellow>/party invite <player> <gray>- Invite a player"));
-        player.sendMessage(TextUtil.parse("<yellow>/party accept <leader> <gray>- Accept an invite"));
+        player.sendMessage(TextUtil.parse("<yellow>/party accept <leader> <gray>- Accept a party invite"));
         player.sendMessage(TextUtil.parse("<yellow>/party leave <gray>- Leave current party"));
         player.sendMessage(TextUtil.parse("<yellow>/party disband <gray>- Disband the party"));
-        player.sendMessage(TextUtil.parse("<yellow>/party split [kit] <gray>- Split party into 2 teams"));
+        player.sendMessage(TextUtil.parse("<yellow>/party duel <leader> [kit] <gray>- Challenge party to 2v2/3v3/4v4 duel"));
+        player.sendMessage(TextUtil.parse("<yellow>/party split [kit] <gray>- Split party into 2 teams (2v2 - 4v4)"));
         player.sendMessage(TextUtil.parse("<yellow>/party info <gray>- View party roster"));
     }
 
@@ -135,14 +183,14 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                                                 @NotNull String label,
                                                 @NotNull String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("create", "invite", "accept", "leave", "disband", "split", "info");
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("invite")) {
+            return Arrays.asList("create", "invite", "accept", "leave", "disband", "duel", "accept-duel", "decline-duel", "split", "info");
+        } else if (args.length == 2 && (args[0].equalsIgnoreCase("invite") || args[0].equalsIgnoreCase("duel") || args[0].equalsIgnoreCase("accept-duel") || args[0].equalsIgnoreCase("decline-duel"))) {
             List<String> list = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (!p.getName().equalsIgnoreCase(sender.getName())) list.add(p.getName());
             }
             return list;
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("split")) {
+        } else if ((args.length == 2 && args[0].equalsIgnoreCase("split")) || (args.length == 3 && args[0].equalsIgnoreCase("duel"))) {
             List<String> list = new ArrayList<>();
             for (Kit k : plugin.getKitManager().getAllKits()) list.add(k.getId());
             return list;

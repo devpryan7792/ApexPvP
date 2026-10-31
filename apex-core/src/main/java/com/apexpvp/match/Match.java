@@ -103,13 +103,23 @@ public abstract class Match {
             // 1. Immutable pre-match snapshot
             snapshots.put(player.getUniqueId(), new PlayerRestoreSnapshot(player));
 
-            // 2. Teleport to designated team spawn
-            Location spawn = (participant.getTeamIndex() == 0) ? arena.getSpawnA() : arena.getSpawnB();
+            // 2. Teleport to designated team spawn (with lateral spread for 2v2, 3v3, 4v4 teams)
+            Location baseSpawn = (participant.getTeamIndex() == 0) ? arena.getSpawnA() : arena.getSpawnB();
+            Location spawn = (baseSpawn != null) ? baseSpawn.clone() : new Location(null, 0, 0, 0);
             if (spawn.getWorld() != null) {
                 // Ensure spawn chunk is loaded synchronously so Paper does not drop or cancel the teleport
                 int cx = spawn.getBlockX() >> 4;
                 int cz = spawn.getBlockZ() >> 4;
                 spawn.getWorld().getChunkAt(cx, cz);
+
+                long teamMemberIndex = participants.values().stream()
+                        .filter(p -> p.getTeamIndex() == participant.getTeamIndex() && p.getUuid().compareTo(participant.getUuid()) < 0)
+                        .count();
+                if (teamMemberIndex > 0) {
+                    double yawRad = Math.toRadians(spawn.getYaw() + 90.0);
+                    double offsetMultiplier = ((teamMemberIndex % 2 == 1) ? ((teamMemberIndex + 1) / 2.0) : -(teamMemberIndex / 2.0));
+                    spawn.add(offsetMultiplier * 1.5 * Math.cos(yawRad), 0, offsetMultiplier * 1.5 * Math.sin(yawRad));
+                }
             }
 
             // Reset flight, velocity and switch to SURVIVAL prior to teleport

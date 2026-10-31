@@ -1,6 +1,7 @@
 package com.apexpvp.ui.gui;
 
 import com.apexpvp.ApexPvPPlugin;
+import com.apexpvp.kit.Kit;
 import com.apexpvp.party.Party;
 import com.apexpvp.util.TextUtil;
 import net.kyori.adventure.text.Component;
@@ -89,7 +90,7 @@ public class PartyGUI implements Listener {
                 lore.add(TextUtil.parse("<gray>stick together across match queues.</gray>"));
                 lore.add(Component.empty());
                 lore.add(TextUtil.parse("<dark_gray>•</dark_gray> <gray>Max Members:</gray> <gold>16 players</gold>"));
-                lore.add(TextUtil.parse("<dark_gray>•</dark_gray> <gray>Modes:</gray> <yellow>2v2 Team Queue, Party Split Scrimmage</yellow>"));
+                lore.add(TextUtil.parse("<dark_gray>•</dark_gray> <gray>Modes:</gray> <yellow>2v2 - 4v4 Queues, Party Duels, Party Split (2v2 - 4v4)</yellow>"));
                 iMeta.lore(lore);
                 infoItem.setItemMeta(iMeta);
             }
@@ -177,17 +178,18 @@ public class PartyGUI implements Listener {
             ItemStack duelItem = new ItemStack(Material.DIAMOND_SWORD);
             ItemMeta dMeta = duelItem.getItemMeta();
             if (dMeta != null) {
-                dMeta.displayName(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>PARTY SPLIT SCRIMMAGE</bold></gradient>"));
+                dMeta.displayName(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>PARTY SPLIT SCRIMMAGE (2v2 - 4v4)</bold></gradient>"));
                 List<Component> lore = new ArrayList<>();
                 lore.add(TextUtil.parse("<gray>Split all party members into 2 equal teams</gray>"));
                 lore.add(TextUtil.parse("<gray>and battle in a private arena!</gray>"));
+                lore.add(TextUtil.parse("<gray>Supports 2v2 (4p), 3v3 (6p), and 4v4 (8p).</gray>"));
                 lore.add(Component.empty());
                 if (party.getSize() < 2) {
                     lore.add(TextUtil.parse("<red>Requires at least 2 members.</red>"));
                 } else if (!party.isLeader(player.getUniqueId())) {
                     lore.add(TextUtil.parse("<red>Only the Party Leader can start.</red>"));
                 } else {
-                    lore.add(TextUtil.parse("<green>» Click to select kit and start</green>"));
+                    lore.add(TextUtil.parse("<green>» Click to start party scrimmage</green>"));
                 }
                 dMeta.lore(lore);
                 duelItem.setItemMeta(dMeta);
@@ -280,7 +282,10 @@ public class PartyGUI implements Listener {
                     return;
                 }
                 player.closeInventory();
-                plugin.getDuelKitGUI().open(player, player); // Kit selection for scrimmage
+                Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
+                if (kit != null) {
+                    plugin.getPartyManager().splitParty(player, kit);
+                }
             } else if (slot == 22) {
                 // Open invite menu
                 plugin.getPartyInviteGUI().open(player);

@@ -138,20 +138,21 @@ public class RankedMenuGUI implements Listener {
         }
         inv.setItem(11, soloBtn);
 
-        // Slot 15: Team Ranked (2v2)
+        // Slot 15: Team Ranked (2v2 - 4v4)
         ItemStack teamBtn = new ItemStack(Material.NETHERITE_SWORD);
         ItemMeta teamMeta = teamBtn.getItemMeta();
         if (teamMeta != null) {
-            teamMeta.displayName(TextUtil.parse("<gradient:#00FF88:#00AAFF><bold>Team Ranked (2v2)</bold></gradient>"));
+            teamMeta.displayName(TextUtil.parse("<gradient:#00FF88:#00AAFF><bold>Team Ranked (2v2 - 4v4)</bold></gradient>"));
             List<Component> lore = new ArrayList<>();
             lore.add(TextUtil.parse("<dark_gray>──────────────────────────────</dark_gray>"));
-            lore.add(TextUtil.parse("<gray>Enter competitive 2v2 party combat.</gray>"));
-            lore.add(TextUtil.parse("<gray>Coordinate with your teammate to win!</gray>"));
+            lore.add(TextUtil.parse("<gray>Enter competitive party matchmaking.</gray>"));
+            lore.add(TextUtil.parse("<gray>Supports 2v2, 3v3, and 4v4 team battles!</gray>"));
             lore.add(TextUtil.parse(""));
-            lore.add(TextUtil.parse("<gray>Requires: <yellow>Party of 2+ players</yellow>"));
+            lore.add(TextUtil.parse("<gray>Team Sizes: <yellow>2v2, 3v3, 4v4</yellow>"));
+            lore.add(TextUtil.parse("<gray>Requires: <yellow>Party of 2 to 4 players</yellow>"));
             lore.add(TextUtil.parse("<gray>Rating Effect: <green>Team Average ELO</green>"));
             lore.add(TextUtil.parse("<dark_gray>──────────────────────────────</dark_gray>"));
-            lore.add(TextUtil.parse("<green><bold>CLICK</bold></green> <yellow>» Select Kit & Enter Team Match</yellow>"));
+            lore.add(TextUtil.parse("<green><bold>CLICK</bold></green> <yellow>» Select Kit & Enter Team Queue</yellow>"));
             teamMeta.lore(lore);
             teamBtn.setItemMeta(teamMeta);
         }
@@ -248,7 +249,12 @@ public class RankedMenuGUI implements Listener {
                 }
                 if (party.getSize() < 2) {
                     player.closeInventory();
-                    TextUtil.sendPrefixed(player, "<red>You need at least 2 party members to play Team Ranked!");
+                    TextUtil.sendPrefixed(player, "<red>Team Ranked matchmaking requires at least 2 party members (min 2v2)!");
+                    return;
+                }
+                if (party.getSize() > 4) {
+                    player.closeInventory();
+                    TextUtil.sendPrefixed(player, "<red>Team Ranked matchmaking supports up to 4 members (max 4v4)! Your party has " + party.getSize() + " members. For 4v4 internal party scrimmages, use <yellow>/party split</yellow>.");
                     return;
                 }
                 openKitSelector(player, true);
@@ -277,7 +283,7 @@ public class RankedMenuGUI implements Listener {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
 
             if (kitHolder.isTeamRanked()) {
-                plugin.getPartyManager().startRankedPartySplit(player, kit);
+                plugin.getQueueManager().queueParty(player, kit);
             } else {
                 plugin.getQueueManager().queuePlayer(player, kit);
             }
