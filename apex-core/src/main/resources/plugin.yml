@@ -61,8 +61,15 @@ commands:
     description: Competitive ranked matchmaking hub, direct kit queuing, and status
     usage: /ranked [menu|queue <kit>|leave|status|<kit>]
     aliases: [rmatch]
+  ffa:
+    description: Join or manage Free-For-All (FFA) deathmatches
+    usage: /ffa [queue <kit>|leave|status|<kit>]
+    aliases: [freeforall, deathmatch]
 
 permissions:
+  apexpvp.ffa:
+    description: Access to /ffa Free-For-All deathmatches
+    default: true
   apexpvp.admin:
     description: Master administrator permission for ApexPvP
     default: op

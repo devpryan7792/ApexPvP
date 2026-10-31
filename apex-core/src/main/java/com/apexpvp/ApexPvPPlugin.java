@@ -12,6 +12,7 @@ import com.apexpvp.command.ApexCommand;
 import com.apexpvp.command.ArenaCommand;
 import com.apexpvp.command.BetCommand;
 import com.apexpvp.command.DuelCommand;
+import com.apexpvp.command.FfaCommand;
 import com.apexpvp.command.KitCommand;
 import com.apexpvp.command.LeaderboardCommand;
 import com.apexpvp.command.PartyCommand;
@@ -343,6 +344,11 @@ public class ApexPvPPlugin extends JavaPlugin {
             ArenaCommand arenaCmd = new ArenaCommand(this);
             getCommand("arena").setExecutor(arenaCmd);
             getCommand("arena").setTabCompleter(arenaCmd);
+        }
+        if (getCommand("ffa") != null) {
+            FfaCommand ffaCmd = new FfaCommand(this);
+            getCommand("ffa").setExecutor(ffaCmd);
+            getCommand("ffa").setTabCompleter(ffaCmd);
         }
     }
 

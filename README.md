@@ -10,15 +10,16 @@
 3. [Casual Duels, Item Betting & Escrow](#casual-duels-item-betting--escrow)
 4. [Competitive Ranked League](#competitive-ranked-league)
 5. [Parties & Team Scrimmages](#parties--team-scrimmages)
-6. [Combat Kits, Soup PvP & Hotbar Editor](#combat-kits-soup-pvp--hotbar-editor)
-7. [Arenas & Safe Zone Mechanics](#arenas--safe-zone-mechanics)
-8. [Practice Bots](#practice-bots)
-9. [Spectator Betting](#spectator-betting)
-10. [Admin In-Game GUI Editor (`/apex editor` & `/pduels editor`)](#admin-in-game-gui-editor-apex-editor--pduels-editor)
-11. [Custom Maps & WorldEdit Creation](#custom-maps--worldedit-creation)
-12. [Complete Command Cheat Sheet](#complete-command-cheat-sheet)
-13. [Permissions Guide](#permissions-guide)
-14. [Server Setup & Connectivity](#server-setup--connectivity)
+6. [Free-For-All (FFA) Deathmatch](#free-for-all-ffa-deathmatch)
+7. [Combat Kits, Soup PvP & Hotbar Editor](#combat-kits-soup-pvp--hotbar-editor)
+8. [Arenas & Safe Zone Mechanics](#arenas--safe-zone-mechanics)
+9. [Practice Bots](#practice-bots)
+10. [Spectator Betting](#spectator-betting)
+11. [Admin In-Game GUI Editor (`/apex editor` & `/pduels editor`)](#admin-in-game-gui-editor-apex-editor--pduels-editor)
+12. [Custom Maps & WorldEdit Creation](#custom-maps--worldedit-creation)
+13. [Complete Command Cheat Sheet](#complete-command-cheat-sheet)
+14. [Permissions Guide](#permissions-guide)
+15. [Server Setup & Connectivity](#server-setup--connectivity)
 
 ---
 
@@ -30,6 +31,7 @@
 | **Duel a Player** | `/duel <player>` | Pick a kit and arena, challenge with optional coin stakes or physical items. |
 | **Wager Items in Escrow** | `/duel <player> item` | Open the 54-slot shared anti-scam escrow window to wager physical items. |
 | **Competitive Ranked** | `/ranked` | Open Ranked Hub to view your ELO and queue Solo (1v1) or Team (2v2 - 4v4). |
+| **Free-For-All (FFA)** | `/ffa queue <kit>` | Join 4-player solo FFA queue or run `/party ffa` for all-vs-all chaos. |
 | **Party Management** | `/party` | Open 27-slot GUI for party queues, direct party duels (2v2 - 4v4), and scrimmages. |
 | **Fight a Practice Bot** | `/practice <kit> [difficulty]` | Warm up solo anytime against an AI combatant. |
 | **Customize Kit Hotbar** | `/kiteditor <kit>` | Drag and drop weapons, pearls, and potions into your preferred slots. |
@@ -177,9 +179,43 @@ Intra-party scrimmages let friends battle each other within the same party:
 /party accept-duel <leader>            - Accept a party duel
 /party decline-duel <leader>           - Decline a party duel
 /party split [kit]                     - Split party into teams for a scrimmage (2v2 - 4v4)
+/party ffa [kit]                       - Start all-vs-all FFA deathmatch (2-16 players)
 /party leave                           - Leave current party (auto-dequeues if queued)
 /party disband                         - Disband party (leader only)
 ```
+
+---
+
+## Free-For-All (FFA) Deathmatch
+
+ApexPvP includes a fully automated Free-For-All (FFA) battle-royale engine with radial perimeter spawning, mutual damage combat, and last-man-standing win conditions.
+
+### 1. Solo 4-Player Matchmaking Queue (`/ffa`)
+Jump into quick, casual multi-player deathmatches without needing a pre-made party:
+```text
+/ffa queue <kit>                       - Queue for a 4-player FFA match with specified kit
+/ffa leave                             - Leave your active FFA queue
+/ffa status                            - Check queue progress (players waiting out of 4)
+/ffa [kit]                             - Quick shortcut to join queue or open kit selector
+```
+- **Instant Auto-Drain:** As soon as 4 players queue for the same kit, an arena instance is allocated and all 4 combatants are warped into combat simultaneously.
+- **Queue Protection:** Queuing FFA automatically removes you from 1v1 / ranked queues to prevent double-booking.
+
+### 2. Party FFA Deathmatch (`/party ffa`)
+Party leaders can launch an all-vs-all bloodbath among party members:
+```text
+/party ffa [kit]                       - Launch Party FFA deathmatch (2 to 16 members)
+```
+- **Uneven Party Sizes Supported:** Unlike 2v2/3v3/4v4 split scrimmages that require even teams, Party FFA supports **any party size from 2 to 16 players** (e.g. 3, 5, 7 players).
+- **Mutual Combat:** Friendly fire is completely disabled — every combatant can attack every other combatant.
+
+### 3. Radial Perimeter Spawning
+- Players are dynamically distributed along an equidistant radial perimeter around the arena center (`arena.getFfaSpawn()` or geometric center).
+- Every player spawns with their yaw pointed directly towards the center of the arena, ensuring a fair line of sight and zero spawn-camping advantage.
+
+### 4. Interactive GUI Access
+- **Player Hub (`/duels`):** Slot 10 features the **Free-For-All Portal** (Netherite Axe). Left-click to join the solo queue, or Right-click to trigger Party FFA.
+- **Party Menu (`/party`):** Slot 21 features the **Party FFA button** (Netherite Axe) for instant 1-click deathmatches with your party.
 
 ---
 
@@ -352,12 +388,14 @@ Server administrators can manage the entire duels system visually without manual
 | `/ranked` | `/ranked [menu\|queue <kit>\|leave\|status]` | Competitive hub, Solo (1v1) and Team (2v2 - 4v4) queues |
 | `/queue` | `/queue <kit>` | Quick alias to join ranked queue |
 | `/leavequeue` | `/leavequeue` | Quick alias to exit ranked queue |
+| `/ffa` | `/ffa [queue <kit>\|leave\|status]` | Join 4-player solo FFA queue or check queue status |
 | `/party` | `/party [menu\|gui]` | Open interactive 27-slot Party GUI |
 | `/party invite` | `/party invite [player]` | Open online player picker GUI or invite by name |
 | `/party duel` | `/party duel <leader> [kit]` | Challenge an opposing party to a duel (2v2 - 4v4) |
 | `/party accept-duel` | `/party accept-duel <leader>` | Accept an incoming party-vs-party challenge |
 | `/party decline-duel` | `/party decline-duel <leader>` | Decline an incoming party-vs-party challenge |
 | `/party split` | `/party split [kit]` | Split party into two teams for scrimmage (2v2, 3v3, 4v4) |
+| `/party ffa` | `/party ffa [kit]` | Start all-vs-all FFA deathmatch (2-16 players) |
 | `/party leave` | `/party leave` | Leave current party (auto-dequeues if queued) |
 | `/party disband` | `/party disband` | Disband party (leader only) |
 | `/practice` | `/practice <kit> [difficulty]` | Start battle against an AI practice bot |
@@ -392,6 +430,7 @@ Server administrators can manage the entire duels system visually without manual
 # Player Permissions (Default: All Players)
 apexpvp.duel: true          # /duels, /duel, /duel preview, accept, decline, toggle
 apexpvp.queue: true         # /queue, /leavequeue, /ranked
+apexpvp.ffa: true           # /ffa, /ffa queue, leave, status
 apexpvp.party: true         # /party commands and Party GUI
 apexpvp.practice: true      # /practice (bot fights)
 apexpvp.kit: true           # /kits and /kiteditor

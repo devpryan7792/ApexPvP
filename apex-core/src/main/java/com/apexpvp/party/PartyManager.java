@@ -4,6 +4,7 @@ import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.arena.ArenaTemplate;
 import com.apexpvp.kit.Kit;
+import com.apexpvp.match.types.FfaMatch;
 import com.apexpvp.match.types.RankedTeamMatch;
 import com.apexpvp.match.types.TeamMatch;
 import com.apexpvp.util.TextUtil;
@@ -240,6 +241,64 @@ public class PartyManager {
         int teamSize = onlineMembers.size() / 2;
         String modeTag = teamSize + "v" + teamSize;
         party.broadcast("<gradient:#00FFAA:#00AAFF><bold>" + modeTag + " PARTY SPLIT STARTED!</bold></gradient> Red Team vs Blue Team!");
+        return true;
+    }
+
+    public boolean startPartyFfa(@NotNull Player leader, @NotNull Kit kit) {
+        Party party = partiesByPlayer.get(leader.getUniqueId());
+        if (party == null || !party.isLeader(leader.getUniqueId())) {
+            TextUtil.sendPrefixed(leader, "<red>Only the party leader can start a Party Free-For-All!");
+            return false;
+        }
+
+        List<Player> onlineMembers = new ArrayList<>();
+        if (Bukkit.getServer() != null) {
+            for (UUID memberUuid : party.getMembers()) {
+                Player p = Bukkit.getPlayer(memberUuid);
+                if (p != null && p.isOnline()) {
+                    if (plugin.getMatchManager().isInMatch(p)) {
+                        TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " is already in an active match!");
+                        return false;
+                    }
+                    onlineMembers.add(p);
+                }
+            }
+        } else {
+            for (UUID memberUuid : party.getMembers()) {
+                onlineMembers.add(leader);
+            }
+        }
+
+        if (onlineMembers.size() < 2) {
+            TextUtil.sendPrefixed(leader, "<red>You need at least 2 online party members to start an FFA deathmatch!");
+            return false;
+        }
+
+        if (onlineMembers.size() > 16) {
+            TextUtil.sendPrefixed(leader, "<red>Party FFA supports up to 16 players. Your party has " + onlineMembers.size() + " members.");
+            return false;
+        }
+
+        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+        if (template == null) {
+            TextUtil.sendPrefixed(leader, "<red>No arenas are configured.");
+            return false;
+        }
+
+        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        if (arenaInstance == null) {
+            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available. Auto-scaling instance, please try in a moment...");
+            plugin.getArenaManager().requestScaling(template.getId());
+            return false;
+        }
+
+        Collections.shuffle(onlineMembers);
+
+        FfaMatch match = new FfaMatch(plugin, arenaInstance, kit, onlineMembers);
+        plugin.getMatchManager().registerMatch(match);
+        match.start();
+
+        party.broadcast("<gradient:#00FFAA:#00AAFF><bold>PARTY FREE-FOR-ALL STARTED!</bold></gradient> <gold>" + onlineMembers.size() + " players</gold> in all-out combat! Last player standing wins!");
         return true;
     }
 

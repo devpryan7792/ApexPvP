@@ -141,6 +141,20 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                 }
                 plugin.getPartyManager().splitParty(player, kit);
             }
+            case "ffa" -> {
+                Kit kit = null;
+                if (args.length > 1) {
+                    kit = plugin.getKitManager().getKit(args[1]);
+                }
+                if (kit == null) {
+                    kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
+                    if (kit == null) {
+                        TextUtil.sendPrefixed(player, "<red>No kits configured.");
+                        return true;
+                    }
+                }
+                plugin.getPartyManager().startPartyFfa(player, kit);
+            }
             case "info" -> {
                 Party party = plugin.getPartyManager().getParty(player);
                 if (party == null) {
@@ -174,6 +188,7 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(TextUtil.parse("<yellow>/party disband <gray>- Disband the party"));
         player.sendMessage(TextUtil.parse("<yellow>/party duel <leader> [kit] <gray>- Challenge party to 2v2/3v3/4v4 duel"));
         player.sendMessage(TextUtil.parse("<yellow>/party split [kit] <gray>- Split party into 2 teams (2v2 - 4v4)"));
+        player.sendMessage(TextUtil.parse("<yellow>/party ffa [kit] <gray>- Start an all-out Free-For-All deathmatch (2-16p)"));
         player.sendMessage(TextUtil.parse("<yellow>/party info <gray>- View party roster"));
     }
 
@@ -183,14 +198,14 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                                                 @NotNull String label,
                                                 @NotNull String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("create", "invite", "accept", "leave", "disband", "duel", "accept-duel", "decline-duel", "split", "info");
+            return Arrays.asList("create", "invite", "accept", "leave", "disband", "duel", "accept-duel", "decline-duel", "split", "ffa", "info");
         } else if (args.length == 2 && (args[0].equalsIgnoreCase("invite") || args[0].equalsIgnoreCase("duel") || args[0].equalsIgnoreCase("accept-duel") || args[0].equalsIgnoreCase("decline-duel"))) {
             List<String> list = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (!p.getName().equalsIgnoreCase(sender.getName())) list.add(p.getName());
             }
             return list;
-        } else if ((args.length == 2 && args[0].equalsIgnoreCase("split")) || (args.length == 3 && args[0].equalsIgnoreCase("duel"))) {
+        } else if ((args.length == 2 && (args[0].equalsIgnoreCase("split") || args[0].equalsIgnoreCase("ffa"))) || (args.length == 3 && args[0].equalsIgnoreCase("duel"))) {
             List<String> list = new ArrayList<>();
             for (Kit k : plugin.getKitManager().getAllKits()) list.add(k.getId());
             return list;

@@ -196,6 +196,28 @@ public class PartyGUI implements Listener {
             }
             inv.setItem(20, duelItem);
 
+            // Slot 21: Party Free-For-All (FFA)
+            ItemStack ffaItem = new ItemStack(Material.NETHERITE_AXE);
+            ItemMeta ffaMeta = ffaItem.getItemMeta();
+            if (ffaMeta != null) {
+                ffaMeta.displayName(TextUtil.parse("<gradient:#FFAA00:#FF5555><bold>PARTY FREE-FOR-ALL (FFA)</bold></gradient>"));
+                List<Component> lore = new ArrayList<>();
+                lore.add(TextUtil.parse("<gray>Enter an all-out deathmatch where every</gray>"));
+                lore.add(TextUtil.parse("<gray>party member fights for themselves!</gray>"));
+                lore.add(TextUtil.parse("<gray>Supports 2 to 16 players (last survivor wins).</gray>"));
+                lore.add(Component.empty());
+                if (party.getSize() < 2) {
+                    lore.add(TextUtil.parse("<red>Requires at least 2 members.</red>"));
+                } else if (!party.isLeader(player.getUniqueId())) {
+                    lore.add(TextUtil.parse("<red>Only the Party Leader can start.</red>"));
+                } else {
+                    lore.add(TextUtil.parse("<green>» Click to start Party FFA</green>"));
+                }
+                ffaMeta.lore(lore);
+                ffaItem.setItemMeta(ffaMeta);
+            }
+            inv.setItem(21, ffaItem);
+
             // Slot 22: Invite Player
             ItemStack inviteItem = new ItemStack(Material.WRITABLE_BOOK);
             ItemMeta inMeta = inviteItem.getItemMeta();
@@ -285,6 +307,21 @@ public class PartyGUI implements Listener {
                 Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
                 if (kit != null) {
                     plugin.getPartyManager().splitParty(player, kit);
+                }
+            } else if (slot == 21) {
+                // Party Free-For-All (FFA)
+                if (!isLeader) {
+                    TextUtil.sendPrefixed(player, "<red>Only the party leader can initiate party duels.");
+                    return;
+                }
+                if (party.getSize() < 2) {
+                    TextUtil.sendPrefixed(player, "<red>You need at least 2 party members to start an FFA deathmatch.");
+                    return;
+                }
+                player.closeInventory();
+                Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
+                if (kit != null) {
+                    plugin.getPartyManager().startPartyFfa(player, kit);
                 }
             } else if (slot == 22) {
                 // Open invite menu

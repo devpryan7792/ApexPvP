@@ -26,6 +26,7 @@ public class ArenaInstance {
     private final Location spawnA;
     private final Location spawnB;
     private final Location spectatorSpawn;
+    private final Location ffaSpawn;
 
     private final AtomicReference<ArenaState> state;
     private final RollbackSnapshot rollbackSnapshot;
@@ -52,6 +53,10 @@ public class ArenaInstance {
         this.spawnA = template.getRelativeSpawnA().toLocation(world, originX, originY, originZ);
         this.spawnB = template.getRelativeSpawnB().toLocation(world, originX, originY, originZ);
         this.spectatorSpawn = template.getRelativeSpectatorSpawn().toLocation(world, originX, originY, originZ);
+        ArenaTemplate.SpawnPoint relFfa = template.getRelativeFfaSpawn();
+        this.ffaSpawn = (relFfa != null)
+                ? relFfa.toLocation(world, originX, originY, originZ)
+                : new Location(world, originX + (bounds.getMaxX() - bounds.getMinX()) / 2.0, originY, originZ + (bounds.getMaxZ() - bounds.getMinZ()) / 2.0);
 
         this.state = new AtomicReference<>(ArenaState.AVAILABLE);
         this.rollbackSnapshot = new RollbackSnapshot();
@@ -142,6 +147,11 @@ public class ArenaInstance {
     @NotNull
     public Location getSpectatorSpawn() {
         return spectatorSpawn.clone();
+    }
+
+    @NotNull
+    public Location getFfaSpawn() {
+        return ffaSpawn.clone();
     }
 
     @NotNull

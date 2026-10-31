@@ -4,6 +4,7 @@ import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.arena.ArenaTemplate;
 import com.apexpvp.kit.Kit;
+import com.apexpvp.match.types.FfaMatch;
 import com.apexpvp.match.types.RankedMatch;
 import com.apexpvp.match.types.RankedTeamMatch;
 import com.apexpvp.party.Party;
@@ -33,6 +34,8 @@ public class QueueManager implements Runnable {
     private final ApexPvPPlugin plugin;
     private final Map<String, List<QueueTicket>> queues = new ConcurrentHashMap<>();
     private final Map<UUID, QueueTicket> playerTickets = new ConcurrentHashMap<>();
+    private final Map<String, List<UUID>> ffaQueues = new ConcurrentHashMap<>();
+    private final Map<UUID, String> ffaQueuePlayers = new ConcurrentHashMap<>();
 
     private final int initialSearchRange;
     private final int expansionStep;
@@ -59,6 +62,8 @@ public class QueueManager implements Runnable {
         }
         queues.clear();
         playerTickets.clear();
+        ffaQueues.clear();
+        ffaQueuePlayers.clear();
     }
 
     public boolean queuePlayer(@NotNull Player player, @NotNull Kit kit) {
@@ -184,6 +189,9 @@ public class QueueManager implements Runnable {
     public boolean leaveQueue(@NotNull Player player) {
         QueueTicket ticket = playerTickets.get(player.getUniqueId());
         if (ticket == null) {
+            if (ffaQueuePlayers.containsKey(player.getUniqueId())) {
+                return leaveFfaQueue(player);
+            }
             TextUtil.sendPrefixed(player, "<red>You are not in a matchmaking queue.");
             return false;
         }
@@ -219,8 +227,80 @@ public class QueueManager implements Runnable {
         return true;
     }
 
+    public boolean queueFfaPlayer(@NotNull Player player, @NotNull Kit kit) {
+        UUID uuid = player.getUniqueId();
+
+        if (plugin.getMatchManager().isInMatch(player)) {
+            TextUtil.sendPrefixed(player, "<red>You cannot join matchmaking while inside an active match!");
+            return false;
+        }
+
+        if (playerTickets.containsKey(uuid) || ffaQueuePlayers.containsKey(uuid)) {
+            TextUtil.sendPrefixed(player, "<red>You are already in a matchmaking queue!");
+            return false;
+        }
+
+        PlayerProfile profile = plugin.getProfileManager().getProfile(uuid);
+        if (profile == null) {
+            TextUtil.sendPrefixed(player, "<red>Profile data is still loading. Please try again shortly.");
+            return false;
+        }
+
+        boolean economyEnabled = plugin.getConfig().getBoolean("ranked.economy.enabled", true);
+        double entryFee = plugin.getConfig().getDouble("ffa.entry-fee", 10.0);
+        Economy economy = plugin.getEconomy();
+
+        if (economyEnabled && entryFee > 0.0 && economy != null) {
+            if (!economy.has(player, entryFee)) {
+                TextUtil.sendPrefixed(player, "<red>You do not have enough coins (" + entryFee + ") for the FFA entry fee!");
+                return false;
+            }
+            economy.withdrawPlayer(player, entryFee);
+        }
+
+        List<UUID> q = ffaQueues.computeIfAbsent(kit.getId(), k -> new CopyOnWriteArrayList<>());
+        q.add(uuid);
+        ffaQueuePlayers.put(uuid, kit.getId());
+
+        int targetSize = plugin.getConfig().getInt("ffa.queue-size", 4);
+        TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>FFA QUEUE JOINED!</bold></gradient> You joined the <yellow>" + kit.getDisplayName() + "</yellow> Free-For-All queue (<gold>" + q.size() + "/" + targetSize + "</gold> players).");
+        return true;
+    }
+
+    public boolean leaveFfaQueue(@NotNull Player player) {
+        String kitId = ffaQueuePlayers.remove(player.getUniqueId());
+        if (kitId == null) {
+            return false;
+        }
+
+        List<UUID> q = ffaQueues.get(kitId);
+        if (q != null) {
+            q.remove(player.getUniqueId());
+        }
+
+        boolean economyEnabled = plugin.getConfig().getBoolean("ranked.economy.enabled", true);
+        double entryFee = plugin.getConfig().getDouble("ffa.entry-fee", 10.0);
+        Economy economy = plugin.getEconomy();
+
+        if (economyEnabled && entryFee > 0.0 && economy != null) {
+            economy.depositPlayer(player, entryFee);
+        }
+
+        TextUtil.sendPrefixed(player, "<yellow>You left the FFA matchmaking queue. Entry fee refunded.");
+        return true;
+    }
+
+    public boolean isInFfaQueue(@NotNull UUID uuid) {
+        return ffaQueuePlayers.containsKey(uuid);
+    }
+
+    public int getFfaQueueCount(@NotNull String kitId) {
+        List<UUID> q = ffaQueues.get(kitId);
+        return q != null ? q.size() : 0;
+    }
+
     public boolean isInQueue(@NotNull UUID uuid) {
-        return playerTickets.containsKey(uuid);
+        return playerTickets.containsKey(uuid) || ffaQueuePlayers.containsKey(uuid);
     }
 
     @org.jetbrains.annotations.Nullable
@@ -352,6 +432,52 @@ public class QueueManager implements Runnable {
                     plugin.getMatchManager().registerMatch(match);
                     match.start();
                 }
+            }
+        }
+
+        // 3. Scan for FFA queue candidates
+        int targetFfaSize = plugin.getConfig().getInt("ffa.queue-size", 4);
+        for (Map.Entry<String, List<UUID>> entry : ffaQueues.entrySet()) {
+            String kitId = entry.getKey();
+            List<UUID> list = entry.getValue();
+
+            list.removeIf(uuid -> {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p == null || !p.isOnline() || plugin.getMatchManager().isInMatch(p)) {
+                    ffaQueuePlayers.remove(uuid);
+                    return true;
+                }
+                return false;
+            });
+
+            while (list.size() >= targetFfaSize) {
+                Kit kit = plugin.getKitManager().getKit(kitId);
+                if (kit == null) break;
+
+                ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+                if (template == null) break;
+
+                ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+                if (arenaInstance == null) {
+                    plugin.getArenaManager().requestScaling(template.getId());
+                    break;
+                }
+
+                List<Player> combatants = new ArrayList<>();
+                for (int i = 0; i < targetFfaSize; i++) {
+                    UUID u = list.remove(0);
+                    ffaQueuePlayers.remove(u);
+                    Player p = Bukkit.getPlayer(u);
+                    if (p != null) combatants.add(p);
+                }
+
+                for (Player p : combatants) {
+                    TextUtil.sendPrefixed(p, "<gradient:#00FFAA:#00AAFF><bold>FFA MATCH FOUND!</bold></gradient> Entering arena with <gold>" + combatants.size() + " combatants</gold>!");
+                }
+
+                FfaMatch match = new FfaMatch(plugin, arenaInstance, kit, combatants);
+                plugin.getMatchManager().registerMatch(match);
+                match.start();
             }
         }
     }

@@ -1,6 +1,8 @@
 package com.apexpvp.ui.gui;
 
 import com.apexpvp.ApexPvPPlugin;
+import com.apexpvp.kit.Kit;
+import com.apexpvp.party.Party;
 import com.apexpvp.profile.PlayerProfile;
 import com.apexpvp.util.TextUtil;
 import net.kyori.adventure.text.Component;
@@ -75,6 +77,22 @@ public class DuelsMenuGUI implements Listener {
         for (int i = 0; i < 27; i++) {
             inv.setItem(i, filler);
         }
+
+        // Slot 10: Free-For-All (FFA) Deathmatch
+        ItemStack ffaItem = new ItemStack(Material.NETHERITE_AXE);
+        ItemMeta ffaMeta = ffaItem.getItemMeta();
+        if (ffaMeta != null) {
+            ffaMeta.displayName(TextUtil.parse("<gradient:#FF5555:#FFAA00><bold>Free-For-All (FFA)</bold></gradient>"));
+            List<Component> lore = new ArrayList<>();
+            lore.add(TextUtil.parse("<gray>All-out deathmatch with no teams!</gray>"));
+            lore.add(TextUtil.parse("<gray>Every fighter is your enemy.</gray>"));
+            lore.add(Component.empty());
+            lore.add(TextUtil.parse("<yellow>▶ Left-Click:</yellow> <white>Join 4-Player FFA Queue</white>"));
+            lore.add(TextUtil.parse("<gold>▶ Right-Click:</gold> <white>Party FFA Scrimmage (2-16p)</white>"));
+            ffaMeta.lore(lore);
+            ffaItem.setItemMeta(ffaMeta);
+        }
+        inv.setItem(10, ffaItem);
 
         // Slot 11: Play Matchmaking (Netherite Sword)
         ItemStack matchmakingItem = new ItemStack(Material.NETHERITE_SWORD);
@@ -215,6 +233,29 @@ public class DuelsMenuGUI implements Listener {
         if (profile == null) return;
 
         switch (slot) {
+            case 10 -> {
+                // Free-For-All (FFA)
+                player.closeInventory();
+                if (event.getClick() == ClickType.RIGHT) {
+                    Party party = plugin.getPartyManager().getParty(player);
+                    if (party != null && party.isLeader(player.getUniqueId()) && party.getSize() >= 2) {
+                        Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
+                        if (kit != null) {
+                            plugin.getPartyManager().startPartyFfa(player, kit);
+                            return;
+                        }
+                    }
+                    plugin.getPartyGUI().open(player);
+                } else {
+                    // Left-click: queue for default kit FFA or dispatch /ffa
+                    Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
+                    if (kit != null) {
+                        plugin.getQueueManager().queueFfaPlayer(player, kit);
+                    } else {
+                        plugin.getServer().dispatchCommand(player, "ffa");
+                    }
+                }
+            }
             case 11 -> {
                 // Play Matchmaking
                 if (event.getClick() == ClickType.RIGHT) {
