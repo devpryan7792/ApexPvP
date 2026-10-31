@@ -20,6 +20,7 @@
 13. [Complete Command Cheat Sheet](#complete-command-cheat-sheet)
 14. [Permissions Guide](#permissions-guide)
 15. [Server Setup & Connectivity](#server-setup--connectivity)
+16. [Master In-Game Testing Runbook (Test Everything)](#master-in-game-testing-runbook-test-everything)
 
 ---
 
@@ -474,3 +475,103 @@ apexpvp.kit.admin: true     # /kits create, delete, configure
 # The compiled jar is located at:
 # apex-core/build/libs/apex-core-1.0.0-SNAPSHOT.jar
 ```
+
+---
+
+## Master In-Game Testing Runbook (Test Everything)
+
+Use this complete copy-pasteable testing sequence to verify every feature, GUI, and combat mode in ApexPvP on your live server.
+
+### 1. Admin Verification & Management
+```text
+/apex editor                    - Open the In-Game Admin Editor GUI (arenas, kits, settings)
+/pduels editor                  - Test the admin GUI alias
+/arena list                     - View all registered arena templates & active instances
+/arena tp celestial             - Teleport to the spectator spawn of the 'celestial' arena
+/apex reload                    - Reload all YAML configurations, kits, and database caches
+/apex eco give <player> 1000    - Give test coins to test coin-staked duels and fees
+```
+
+### 2. Player Hub & Privacy Settings
+```text
+/duels                          - Open the 36-slot central Player Hub GUI
+/duel toggle                    - Toggle duel challenge requests ON/OFF (privacy mute)
+/duel privacy                   - Check or toggle duel privacy state
+/stats                          - View your personal combat ELO, win streak, and stats
+/stats <player>                 - View another player's statistics card
+/top                            - View the top-10 global leaderboard
+/rankup                         - Check current division and ELO needed for next promotion
+```
+
+### 3. Autonomous Practice Bots (AI Combatants)
+*Warm up and verify Citizens bot mechanics (strafing, pearls, totem pops, shield blocks, healing):*
+```text
+/practice spear easy            - Fight an Easy Spear PvP bot
+/practice spear medium          - Fight a Medium Spear PvP bot
+/practice spear hard            - Fight a Hard Spear PvP bot (aggressive sprint-resetting)
+/practice crystal hard          - Fight a Hard End Crystal PvP bot (anchor & crystal detonator)
+/practice nodebuff hard         - Fight a PotPvP bot (instant splash potion healing)
+/practice sumo nightmare        - Fight a Nightmare Sumo bot on the ring
+/apex simduel spear hard 50     - Spawn 2 bots fighting each other with a 50-coin pot
+```
+
+### 4. Casual 1v1 Duels & Escrow Betting
+```text
+/duel <player>                  - Open interactive Kit & Arena selectors
+/duel <player> spear            - Direct 1v1 challenge with Spear kit
+/duel <player> crystal 100      - Challenge with a 100-coin escrow wager
+/duel <player> item             - Open the 54-slot shared Anti-Scam Item Betting Escrow GUI
+/duel preview <player>          - Open visual preview card showing kit, arena, and wagers
+/duel accept <player>           - Accept an incoming duel request
+/duel decline <player>          - Decline an incoming duel request
+```
+
+### 5. Competitive Ranked Matchmaking
+```text
+/ranked                         - Open Ranked Hub GUI (view division badge & queue portals)
+/queue spear                    - Quick-queue for 1v1 Ranked Spear PvP
+/queue crystal                  - Quick-queue for 1v1 Ranked Crystal PvP
+/leavequeue                     - Exit active ranked queue
+```
+
+### 6. Free-For-All (FFA) Deathmatch
+```text
+/ffa                            - Open FFA kit selector or queue status
+/ffa queue spear                - Join the 4-player solo FFA deathmatch queue
+/ffa status                     - Check queue status (number of players waiting)
+/ffa leave                      - Exit active FFA queue
+```
+*(In `/duels`, click **Slot 10 Netherite Axe** to access the FFA menu directly).*
+
+### 7. Parties & Team Scrimmages
+```text
+/party                          - Open the interactive 27-slot Party Management GUI
+/party create                   - Create a new party
+/party invite                   - Open the 54-slot online player head invite picker GUI
+/party invite <player>          - Directly invite a player to your party
+/party accept <leader>          - Accept a party invite
+/party decline <leader>         - Decline a party invite
+/party ffa spear                - Launch Party FFA (all-vs-all deathmatch, 2-16 players)
+/party split spear              - Split party into Team 1 vs Team 2 scrimmage (2v2, 3v3, 4v4)
+/party duel <targetLeader> spear - Challenge another party to an official team duel
+/party accept-duel <leader>     - Accept an incoming party duel challenge
+/party decline-duel <leader>    - Decline an incoming party duel challenge
+/party leave                    - Leave party (auto-dequeues party from matchmaking)
+/party disband                  - Disband the party (leader only)
+```
+*(In `/party`, click **Slot 21 Netherite Axe** to trigger Party FFA with 1 click).*
+
+### 8. Kits, Soup PvP & Hotbar Editor
+```text
+/kits                           - Open the visual showcase of all available kits
+/kiteditor spear                - Open custom drag-and-drop hotbar layout editor
+/kiteditor nodebuff             - Edit your custom layout for PotPvP
+```
+*(In match: Right-click Mushroom Stew to test instant 3.5-heart soup healing; drink potions to verify auto-clearing empty glass bottles).*
+
+### 9. Spectator Wagers & Betting
+*When spectating an active duel match:*
+```text
+/bet <combatant> 50             - Wager 50 coins on that player to win
+```
+
