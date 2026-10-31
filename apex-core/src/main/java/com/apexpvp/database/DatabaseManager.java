@@ -131,6 +131,7 @@ public class DatabaseManager {
         try { statement.execute("ALTER TABLE apex_players ADD COLUMN best_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
         try { statement.execute("ALTER TABLE apex_players ADD COLUMN loss_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
         try { statement.execute("ALTER TABLE apex_players ADD COLUMN worst_loss_streak INT DEFAULT 0;"); } catch (SQLException ignored) {}
+        try { statement.execute("ALTER TABLE apex_players ADD COLUMN allow_duel_requests BOOLEAN DEFAULT 1;"); } catch (SQLException ignored) {}
     }
 
     @NotNull

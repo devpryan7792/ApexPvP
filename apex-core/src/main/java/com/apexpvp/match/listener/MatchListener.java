@@ -24,7 +24,22 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.util.Vector;
 import com.apexpvp.util.TextUtil;
+import com.apexpvp.ApexPvPPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.EnderPearl;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -34,9 +49,15 @@ import java.util.Objects;
 public class MatchListener implements Listener {
 
     private final MatchManager matchManager;
+    private final ApexPvPPlugin plugin;
 
     public MatchListener(@NotNull MatchManager matchManager) {
+        this(matchManager, null);
+    }
+
+    public MatchListener(@NotNull MatchManager matchManager, @Nullable ApexPvPPlugin plugin) {
         this.matchManager = Objects.requireNonNull(matchManager, "matchManager cannot be null");
+        this.plugin = plugin;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -235,6 +256,104 @@ public class MatchListener implements Listener {
             if (!player.hasPermission("apexpvp.admin") && !msg.startsWith("/apex leave") && !msg.startsWith("/spec")) {
                 event.setCancelled(true);
                 TextUtil.sendPrefixed(player, "<red>You cannot use commands during an active match!");
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerSoup(PlayerInteractEvent event) {
+        if (!event.hasItem()) return;
+        ItemStack item = event.getItem();
+        if (item == null) return;
+        Material mat = item.getType();
+        if (mat != Material.MUSHROOM_STEW && mat != Material.RABBIT_STEW && mat != Material.BEETROOT_SOUP) return;
+
+        Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
+
+        Player player = event.getPlayer();
+        Match match = matchManager.getMatch(player);
+        if (match == null || match.getState() != MatchState.ACTIVE) return;
+        if (!match.getKit().getRules().soupMode()) return;
+
+        double maxHealth = 20.0;
+        if (player.getAttribute(Attribute.MAX_HEALTH) != null) {
+            maxHealth = player.getAttribute(Attribute.MAX_HEALTH).getValue();
+        }
+
+        if (player.getHealth() < maxHealth) {
+            event.setCancelled(true);
+            double newHealth = Math.min(maxHealth, player.getHealth() + 7.0);
+            player.setHealth(newHealth);
+
+            ItemStack bowl = new ItemStack(Material.BOWL);
+            if (event.getHand() == EquipmentSlot.HAND) {
+                player.getInventory().setItemInMainHand(bowl);
+            } else if (event.getHand() == EquipmentSlot.OFF_HAND) {
+                player.getInventory().setItemInOffHand(bowl);
+            }
+            try {
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EAT, 1.0f, 1.0f);
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPotionConsume(PlayerItemConsumeEvent event) {
+        Player player = event.getPlayer();
+        Match match = matchManager.getMatch(player);
+        if (match == null || match.getState() != MatchState.ACTIVE) return;
+
+        ItemStack item = event.getItem();
+        // Remove empty bottle if enabled
+        if (item.getType() == Material.POTION && match.getKit().getRules().removeEmptyBottles()) {
+            if (plugin != null) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    player.getInventory().remove(Material.GLASS_BOTTLE);
+                });
+            } else {
+                player.getInventory().remove(Material.GLASS_BOTTLE);
+            }
+        }
+
+        // Golden apple custom cooldown
+        if ((item.getType() == Material.GOLDEN_APPLE || item.getType() == Material.ENCHANTED_GOLDEN_APPLE)
+                && match.getKit().getRules().goldenAppleCooldown() > 0) {
+            player.setCooldown(item.getType(), match.getKit().getRules().goldenAppleCooldown() * 20);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPearlLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof EnderPearl pearl)) return;
+        if (!(pearl.getShooter() instanceof Player player)) return;
+
+        Match match = matchManager.getMatch(player);
+        if (match == null || match.getState() != MatchState.ACTIVE) return;
+
+        int pearlCd = match.getKit().getRules().enderPearlCooldown();
+        if (pearlCd > 0) {
+            player.setCooldown(Material.ENDER_PEARL, pearlCd * 20);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCraftItem(CraftItemEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        Match match = matchManager.getMatch(player);
+        if (match != null && match.getState() == MatchState.ACTIVE && match.getKit().getRules().disableCrafting()) {
+            event.setCancelled(true);
+            TextUtil.sendPrefixed(player, "<red>Crafting is disabled during this match.");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCraftInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (event.getSlotType() == InventoryType.SlotType.CRAFTING) {
+            Match match = matchManager.getMatch(player);
+            if (match != null && match.getState() == MatchState.ACTIVE && match.getKit().getRules().disableCrafting()) {
+                event.setCancelled(true);
             }
         }
     }

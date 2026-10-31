@@ -43,6 +43,7 @@ public final class DatabaseSchema {
                 best_streak INT NOT NULL DEFAULT 0,
                 loss_streak INT NOT NULL DEFAULT 0,
                 worst_loss_streak INT NOT NULL DEFAULT 0,
+                allow_duel_requests BOOLEAN NOT NULL DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen %s
             );

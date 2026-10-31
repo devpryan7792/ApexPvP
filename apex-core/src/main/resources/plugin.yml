@@ -13,8 +13,9 @@ softdepend:
 
 commands:
   duel:
-    description: Issue, accept, or decline a 1v1 duel challenge
-    usage: /duel <player> [kit] [stake]
+    description: Issue, accept, or decline a 1v1 duel challenge, or open Dueling Hub
+    usage: /duel [player] [kit] [stake]
+    aliases: [duels, pduels]
   queue:
     description: Join ranked matchmaking queue
     usage: /queue <kit>

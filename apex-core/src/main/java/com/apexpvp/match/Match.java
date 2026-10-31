@@ -10,10 +10,12 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
@@ -52,6 +54,7 @@ public abstract class Match {
     private double currentSafeRadius = -1.0;
     private boolean warningAnnounced = false;
     private boolean shrinkAnnounced = false;
+    protected boolean ownInventory = false;
 
     public Match(@NotNull ApexPvPPlugin plugin,
                  @NotNull ArenaInstance arena,
@@ -66,6 +69,14 @@ public abstract class Match {
         participants.put(player.getUniqueId(), new MatchParticipant(player.getUniqueId(), player.getName(), teamIndex));
     }
 
+    public boolean isOwnInventory() {
+        return ownInventory;
+    }
+
+    public void setOwnInventory(boolean ownInventory) {
+        this.ownInventory = ownInventory;
+    }
+
     /**
      * Phase 1: PREPARING
      * Acquires arena, takes player snapshots, teleports to spawns, applies kit, and freezes.
@@ -73,7 +84,9 @@ public abstract class Match {
     public void start() {
         if (!arena.acquire(plugin)) {
             broadcast("<red>Failed to allocate arena instance. Match aborted.");
-            cleanup();
+            if (plugin.getMatchManager() != null) {
+                plugin.getMatchManager().unregisterMatch(matchId);
+            }
             return;
         }
 
@@ -111,10 +124,12 @@ public abstract class Match {
                 player.teleportAsync(spawn, PlayerTeleportEvent.TeleportCause.PLUGIN);
             }
 
-            // 3. Apply Kit with custom hotbar layout
-            PlayerProfile profile = plugin.getProfileManager().getProfile(player.getUniqueId());
-            String customLayout = (profile != null) ? profile.getCustomHotbar(kit.getId()) : null;
-            kit.apply(player, customLayout);
+            // 3. Apply Kit with custom hotbar layout (unless using own inventory)
+            if (!ownInventory) {
+                PlayerProfile profile = plugin.getProfileManager().getProfile(player.getUniqueId());
+                String customLayout = (profile != null) ? profile.getCustomHotbar(kit.getId()) : null;
+                kit.apply(player, customLayout);
+            }
         }
 
         // Transition to COUNTDOWN
@@ -177,12 +192,12 @@ public abstract class Match {
     }
 
     protected void startMatchTicker() {
-        boolean borderEnabled = plugin.getConfig().getBoolean("match.border.enabled", true);
-        int shrinkDelaySec = plugin.getConfig().getInt("match.border.shrink-delay-seconds", 180);
-        int shrinkDurationSec = plugin.getConfig().getInt("match.border.shrink-duration-seconds", 60);
-        double minRadius = plugin.getConfig().getDouble("match.border.minimum-radius", 6.0);
-        double damagePerSec = plugin.getConfig().getDouble("match.border.damage-per-second", 4.0);
-        int maxDurationSec = plugin.getConfig().getInt("match.max-match-duration-seconds", 600);
+        boolean borderEnabled = plugin.getConfig() != null ? plugin.getConfig().getBoolean("match.border.enabled", true) : true;
+        int shrinkDelaySec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.border.shrink-delay-seconds", 180) : 180;
+        int shrinkDurationSec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.border.shrink-duration-seconds", 60) : 60;
+        double minRadius = plugin.getConfig() != null ? plugin.getConfig().getDouble("match.border.minimum-radius", 6.0) : 6.0;
+        double damagePerSec = plugin.getConfig() != null ? plugin.getConfig().getDouble("match.border.damage-per-second", 4.0) : 4.0;
+        int maxDurationSec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.max-match-duration-seconds", 600) : 600;
 
         int halfWidth = (arena.getBounds().getMaxX() - arena.getBounds().getMinX()) / 2;
         int halfLength = (arena.getBounds().getMaxZ() - arena.getBounds().getMinZ()) / 2;
@@ -300,6 +315,14 @@ public abstract class Match {
                 npc.despawn();
             }
         } else {
+            if (ownInventory) {
+                for (ItemStack drop : victim.getInventory().getContents()) {
+                    if (drop != null && drop.getType() != Material.AIR) {
+                        victim.getWorld().dropItemNaturally(victim.getLocation(), drop);
+                    }
+                }
+                victim.getInventory().clear();
+            }
             // Put into spectator mode inside arena
             victim.setGameMode(GameMode.SPECTATOR);
             victim.teleport(arena.getSpectatorSpawn());
@@ -392,8 +415,13 @@ public abstract class Match {
             plugin.getBettingManager().onMatchEnd(this, winningTeamIndex);
         }
 
-        // 3-second victory celebration delay before cleanup
-        Bukkit.getScheduler().runTaskLater(plugin, this::cleanup, 60L);
+        if (ownInventory && winningTeamIndex != -1) {
+            broadcast("<gradient:#00FFAA:#00AAFF><bold>LOOTING WINDOW!</bold></gradient> <green>The winner has 15 seconds to loot dropped items before returning to lobby!</green>");
+        }
+
+        // 15 seconds (300 ticks) for own inventory mode, 3 seconds (60 ticks) otherwise
+        long delay = ownInventory ? 300L : 60L;
+        Bukkit.getScheduler().runTaskLater(plugin, this::cleanup, delay);
     }
 
     /**
@@ -425,20 +453,33 @@ public abstract class Match {
         for (Map.Entry<UUID, PlayerRestoreSnapshot> entry : snapshots.entrySet()) {
             Player p = Bukkit.getPlayer(entry.getKey());
             if (p != null && p.isOnline()) {
-                entry.getValue().restore(p);
+                if (ownInventory) {
+                    p.setGameMode(GameMode.SURVIVAL);
+                    p.setHealth(20.0);
+                    p.setFoodLevel(20);
+                    p.setFireTicks(0);
+                    Location lobby = entry.getValue().getReturnLocation();
+                    p.teleport(lobby);
+                } else {
+                    entry.getValue().restore(p);
+                }
                 plugin.getMatchManager().unregisterParticipant(p.getUniqueId());
                 if (plugin.getLobbyBossBarManager() != null) {
                     plugin.getLobbyBossBarManager().update(p);
                 }
             } else {
-                plugin.getMatchManager().savePendingRestore(entry.getKey(), entry.getValue());
+                if (!ownInventory) {
+                    plugin.getMatchManager().savePendingRestore(entry.getKey(), entry.getValue());
+                }
                 plugin.getMatchManager().unregisterParticipant(entry.getKey());
             }
         }
         snapshots.clear();
 
         // Trigger tick-budgeted zero-lag rollback on arena instance
-        int blocksPerTick = plugin.getConfig().getInt("arenas.rollback.blocks-per-tick", 250);
+        int blocksPerTick = (plugin.getConfig() != null)
+                ? plugin.getConfig().getInt("arenas.rollback.blocks-per-tick", 250)
+                : 250;
         arena.startRollback(plugin, blocksPerTick, () -> {
             for (MatchParticipant part : participants.values()) {
                 Player p = Bukkit.getPlayer(part.getUuid());
@@ -453,6 +494,9 @@ public abstract class Match {
     }
 
     public void broadcast(@NotNull String miniMessage) {
+        if (Bukkit.getServer() == null) {
+            return;
+        }
         Component parsed = TextUtil.prefixed(miniMessage);
         for (MatchParticipant part : participants.values()) {
             Player p = Bukkit.getPlayer(part.getUuid());

@@ -37,6 +37,11 @@ public class KitManager {
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
     }
 
+    public void reload() {
+        kits.clear();
+        initialize();
+    }
+
     public void initialize() {
         plugin.getLogger().info("Loading kits from kits.yml...");
         File file = new File(plugin.getDataFolder(), "kits.yml");
@@ -67,7 +72,12 @@ public class KitManager {
                 boolean allowHunger = kSec.getBoolean("rules.allow-hunger", true);
                 boolean comboMode = kSec.getBoolean("rules.combo-mode", false);
                 boolean sumoMode = kSec.getBoolean("rules.sumo-mode", false);
-                KitRules rules = new KitRules(allowBuild, allowHunger, comboMode, sumoMode);
+                boolean soupMode = kSec.getBoolean("rules.soup-mode", false);
+                boolean removeBottles = kSec.getBoolean("rules.remove-empty-bottles", false);
+                boolean disableCrafting = kSec.getBoolean("rules.disable-crafting", false);
+                int pearlCd = kSec.getInt("rules.ender-pearl-cooldown", 0);
+                int gappleCd = kSec.getInt("rules.golden-apple-cooldown", 0);
+                KitRules rules = new KitRules(allowBuild, allowHunger, comboMode, sumoMode, soupMode, removeBottles, disableCrafting, pearlCd, gappleCd);
 
                 // Armor
                 ItemStack[] armor = new ItemStack[4];
@@ -351,6 +361,11 @@ public class KitManager {
         config.set(path + ".rules.allow-hunger", rules.allowHunger());
         config.set(path + ".rules.combo-mode", rules.comboMode());
         config.set(path + ".rules.sumo-mode", rules.sumoMode());
+        config.set(path + ".rules.soup-mode", rules.soupMode());
+        config.set(path + ".rules.remove-empty-bottles", rules.removeEmptyBottles());
+        config.set(path + ".rules.disable-crafting", rules.disableCrafting());
+        config.set(path + ".rules.ender-pearl-cooldown", rules.enderPearlCooldown());
+        config.set(path + ".rules.golden-apple-cooldown", rules.goldenAppleCooldown());
 
         ItemStack[] armor = kit.getArmorContents();
         config.set(path + ".armor.helmet", serializeItem(armor.length > 3 ? armor[3] : null));

@@ -77,7 +77,7 @@ public class ProfileManager {
                 PlayerProfile profile = null;
 
                 // 1. Fetch main player record
-                String queryPlayer = "SELECT username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak FROM apex_players WHERE uuid = ?";
+                String queryPlayer = "SELECT username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak, allow_duel_requests FROM apex_players WHERE uuid = ?";
                 try (PreparedStatement ps = conn.prepareStatement(queryPlayer)) {
                     ps.setString(1, uuid.toString());
                     try (ResultSet rs = ps.executeQuery()) {
@@ -89,13 +89,15 @@ public class ProfileManager {
                             int bestStreak = 0;
                             int curLossStreak = 0;
                             int worstLossStreak = 0;
+                            boolean allowDuelReq = true;
                             try {
                                 curStreak = rs.getInt("current_streak");
                                 bestStreak = rs.getInt("best_streak");
                                 curLossStreak = rs.getInt("loss_streak");
                                 worstLossStreak = rs.getInt("worst_loss_streak");
+                                allowDuelReq = rs.getBoolean("allow_duel_requests");
                             } catch (SQLException ignored) {}
-                            profile = new PlayerProfile(uuid, username, rank, elo, coins, curStreak, bestStreak, curLossStreak, worstLossStreak);
+                            profile = new PlayerProfile(uuid, username, rank, elo, coins, curStreak, bestStreak, curLossStreak, worstLossStreak, allowDuelReq);
                         }
                     }
                 }
@@ -150,7 +152,7 @@ public class ProfileManager {
     }
 
     private void insertNewPlayer(@NotNull Connection conn, @NotNull PlayerProfile profile) throws SQLException {
-        String insertSql = "INSERT INTO apex_players (uuid, username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String insertSql = "INSERT INTO apex_players (uuid, username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak, allow_duel_requests) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
             ps.setString(1, profile.getUuid().toString());
             ps.setString(2, profile.getUsername());
@@ -161,6 +163,7 @@ public class ProfileManager {
             ps.setInt(7, profile.getBestStreak());
             ps.setInt(8, profile.getCurrentLossStreak());
             ps.setInt(9, profile.getWorstLossStreak());
+            ps.setBoolean(10, profile.isAllowDuelRequests());
             ps.executeUpdate();
         }
     }
@@ -196,8 +199,8 @@ public class ProfileManager {
         DatabaseType type = databaseManager.getDatabaseType();
         String sql = switch (type) {
             case SQLITE, POSTGRESQL -> """
-                INSERT INTO apex_players (uuid, username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak, last_seen)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO apex_players (uuid, username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak, allow_duel_requests, last_seen)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(uuid) DO UPDATE SET
                     username = EXCLUDED.username,
                     current_rank = EXCLUDED.current_rank,
@@ -207,11 +210,12 @@ public class ProfileManager {
                     best_streak = EXCLUDED.best_streak,
                     loss_streak = EXCLUDED.loss_streak,
                     worst_loss_streak = EXCLUDED.worst_loss_streak,
+                    allow_duel_requests = EXCLUDED.allow_duel_requests,
                     last_seen = CURRENT_TIMESTAMP;
                 """;
             case MYSQL, MARIADB -> """
-                INSERT INTO apex_players (uuid, username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak, last_seen)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO apex_players (uuid, username, current_rank, elo, coins, current_streak, best_streak, loss_streak, worst_loss_streak, allow_duel_requests, last_seen)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE
                     username = VALUES(username),
                     current_rank = VALUES(current_rank),
@@ -221,6 +225,7 @@ public class ProfileManager {
                     best_streak = VALUES(best_streak),
                     loss_streak = VALUES(loss_streak),
                     worst_loss_streak = VALUES(worst_loss_streak),
+                    allow_duel_requests = VALUES(allow_duel_requests),
                     last_seen = CURRENT_TIMESTAMP;
                 """;
         };
@@ -235,6 +240,7 @@ public class ProfileManager {
             ps.setInt(7, profile.getBestStreak());
             ps.setInt(8, profile.getCurrentLossStreak());
             ps.setInt(9, profile.getWorstLossStreak());
+            ps.setBoolean(10, profile.isAllowDuelRequests());
             ps.executeUpdate();
         }
     }

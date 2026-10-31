@@ -34,7 +34,14 @@ import com.apexpvp.ui.gui.KitEditorGUI;
 import com.apexpvp.ui.gui.DuelKitGUI;
 import com.apexpvp.ui.gui.DuelArenaGUI;
 import com.apexpvp.ui.gui.DuelPreviewGUI;
+import com.apexpvp.ui.gui.DuelsMenuGUI;
 import com.apexpvp.ui.gui.RankedMenuGUI;
+import com.apexpvp.ui.gui.admin.AdminEditorGUI;
+import com.apexpvp.ui.gui.admin.AdminArenaListGUI;
+import com.apexpvp.ui.gui.admin.ArenaDetailEditorGUI;
+import com.apexpvp.ui.gui.PartyGUI;
+import com.apexpvp.ui.gui.PartyInviteGUI;
+import com.apexpvp.ui.gui.ItemBettingGUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -71,7 +78,14 @@ public class ApexPvPPlugin extends JavaPlugin {
     private DuelKitGUI duelKitGUI;
     private DuelArenaGUI duelArenaGUI;
     private DuelPreviewGUI duelPreviewGUI;
+    private DuelsMenuGUI duelsMenuGUI;
     private RankedMenuGUI rankedMenuGUI;
+    private AdminEditorGUI adminEditorGUI;
+    private AdminArenaListGUI adminArenaListGUI;
+    private ArenaDetailEditorGUI arenaDetailEditorGUI;
+    private PartyGUI partyGUI;
+    private PartyInviteGUI partyInviteGUI;
+    private ItemBettingGUI itemBettingGUI;
     private LobbyBossBarManager lobbyBossBarManager;
 
     private boolean citizensAvailable;
@@ -126,8 +140,22 @@ public class ApexPvPPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(duelArenaGUI, this);
         this.duelPreviewGUI = new DuelPreviewGUI(this);
         getServer().getPluginManager().registerEvents(duelPreviewGUI, this);
+        this.duelsMenuGUI = new DuelsMenuGUI(this);
+        getServer().getPluginManager().registerEvents(duelsMenuGUI, this);
         this.rankedMenuGUI = new RankedMenuGUI(this);
         getServer().getPluginManager().registerEvents(rankedMenuGUI, this);
+        this.adminEditorGUI = new AdminEditorGUI(this);
+        getServer().getPluginManager().registerEvents(adminEditorGUI, this);
+        this.adminArenaListGUI = new AdminArenaListGUI(this);
+        getServer().getPluginManager().registerEvents(adminArenaListGUI, this);
+        this.arenaDetailEditorGUI = new ArenaDetailEditorGUI(this);
+        getServer().getPluginManager().registerEvents(arenaDetailEditorGUI, this);
+        this.partyGUI = new PartyGUI(this);
+        getServer().getPluginManager().registerEvents(partyGUI, this);
+        this.partyInviteGUI = new PartyInviteGUI(this);
+        getServer().getPluginManager().registerEvents(partyInviteGUI, this);
+        this.itemBettingGUI = new ItemBettingGUI(this);
+        getServer().getPluginManager().registerEvents(itemBettingGUI, this);
 
         // 6. Initialize Lobby BossBar Manager
         this.lobbyBossBarManager = new LobbyBossBarManager(this);
@@ -135,7 +163,7 @@ public class ApexPvPPlugin extends JavaPlugin {
 
         // 7. Initialize Match Lifecycle Engine
         this.matchManager = new MatchManager(this);
-        getServer().getPluginManager().registerEvents(new MatchListener(matchManager), this);
+        getServer().getPluginManager().registerEvents(new MatchListener(matchManager, this), this);
 
         // 8. Initialize Escrow, Queue, Duels, and Party Systems
         this.escrowManager = new EscrowManager(this);
@@ -426,6 +454,11 @@ public class ApexPvPPlugin extends JavaPlugin {
     }
 
     @NotNull
+    public DuelsMenuGUI getDuelsMenuGUI() {
+        return duelsMenuGUI;
+    }
+
+    @NotNull
     public RankedMenuGUI getRankedMenuGUI() {
         return rankedMenuGUI;
     }
@@ -433,5 +466,35 @@ public class ApexPvPPlugin extends JavaPlugin {
     @NotNull
     public LobbyBossBarManager getLobbyBossBarManager() {
         return lobbyBossBarManager;
+    }
+
+    @NotNull
+    public AdminEditorGUI getAdminEditorGUI() {
+        return adminEditorGUI;
+    }
+
+    @NotNull
+    public AdminArenaListGUI getAdminArenaListGUI() {
+        return adminArenaListGUI;
+    }
+
+    @NotNull
+    public ArenaDetailEditorGUI getArenaDetailEditorGUI() {
+        return arenaDetailEditorGUI;
+    }
+
+    @NotNull
+    public PartyGUI getPartyGUI() {
+        return partyGUI;
+    }
+
+    @NotNull
+    public PartyInviteGUI getPartyInviteGUI() {
+        return partyInviteGUI;
+    }
+
+    @NotNull
+    public ItemBettingGUI getItemBettingGUI() {
+        return itemBettingGUI;
     }
 }

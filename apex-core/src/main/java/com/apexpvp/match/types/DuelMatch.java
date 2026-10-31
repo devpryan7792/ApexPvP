@@ -13,18 +13,23 @@ import com.apexpvp.util.TextUtil;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * 1v1 Player Duel with optional currency stake escrow payout.
+ * 1v1 Player Duel with optional currency stake escrow payout and physical item wagering.
  */
 public class DuelMatch extends Match {
 
     private final UUID player1Uuid;
     private final UUID player2Uuid;
     private final double stakeAmount;
+    private final List<ItemStack> wagerItems;
 
     public DuelMatch(@NotNull ApexPvPPlugin plugin,
                      @NotNull ArenaInstance arena,
@@ -32,10 +37,23 @@ public class DuelMatch extends Match {
                      @NotNull Player player1,
                      @NotNull Player player2,
                      double stakeAmount) {
+        this(plugin, arena, kit, player1, player2, stakeAmount, Collections.emptyList(), false);
+    }
+
+    public DuelMatch(@NotNull ApexPvPPlugin plugin,
+                     @NotNull ArenaInstance arena,
+                     @NotNull Kit kit,
+                     @NotNull Player player1,
+                     @NotNull Player player2,
+                     double stakeAmount,
+                     @NotNull List<ItemStack> wagerItems,
+                     boolean ownInventory) {
         super(plugin, arena, kit);
         this.player1Uuid = player1.getUniqueId();
         this.player2Uuid = player2.getUniqueId();
         this.stakeAmount = Math.max(0.0, stakeAmount);
+        this.wagerItems = new ArrayList<>(wagerItems);
+        this.ownInventory = ownInventory;
 
         addParticipant(player1, 0); // Team 0
         addParticipant(player2, 1); // Team 1
@@ -137,6 +155,19 @@ public class DuelMatch extends Match {
             broadcast("<gold>" + winnerName + "</gold> won the wager of <yellow>" + netWinnings + "</yellow> coins! (Tax: " + taxDeduction + ")");
         }
 
+        // Process Physical Item Wager Pot
+        if (winner != null && !wagerItems.isEmpty()) {
+            for (ItemStack item : wagerItems) {
+                var leftover = winner.getInventory().addItem(item);
+                if (!leftover.isEmpty()) {
+                    for (ItemStack rem : leftover.values()) {
+                        winner.getWorld().dropItemNaturally(winner.getLocation(), rem);
+                    }
+                }
+            }
+            broadcast("<gold>" + winnerName + "</gold> claimed the wager pot of <yellow>" + wagerItems.size() + "</yellow> items!");
+        }
+
         // Record to audit database with accurate eloDelta
         int durationSec = (int) ((endTime - startTime) / 1000);
         plugin.getDatabaseManager().executeUpdateAsync(
@@ -147,8 +178,23 @@ public class DuelMatch extends Match {
     }
 
     private void refundStakes() {
-        if (stakeAmount <= 0) return;
-        plugin.getEscrowManager().refund(matchId);
+        if (stakeAmount > 0) {
+            plugin.getEscrowManager().refund(matchId);
+        }
+        if (!wagerItems.isEmpty()) {
+            Player p1 = Bukkit.getPlayer(player1Uuid);
+            Player p2 = Bukkit.getPlayer(player2Uuid);
+            for (ItemStack item : wagerItems) {
+                if (p1 != null && p1.isOnline()) {
+                    var rem = p1.getInventory().addItem(item);
+                    for (ItemStack r : rem.values()) p1.getWorld().dropItemNaturally(p1.getLocation(), r);
+                } else if (p2 != null && p2.isOnline()) {
+                    var rem = p2.getInventory().addItem(item);
+                    for (ItemStack r : rem.values()) p2.getWorld().dropItemNaturally(p2.getLocation(), r);
+                }
+            }
+            wagerItems.clear();
+        }
     }
 
     @Override

@@ -1,84 +1,112 @@
 # ApexPvP
 
-> The complete competitive PvP engine for modern Minecraft servers. Features 18-tier ranked leagues, casual duels with escrow wagering, custom schematic arenas, WorldEdit in-game map creation, shrinking safe zones, hotbar kit editors, and autonomous practice bots.
+> High-performance competitive PvP and duels engine for modern Minecraft servers. Features an in-game admin GUI editor, player duel hub, 18-tier ranked leagues with automatic promotions, item betting escrow, custom schematic arenas with WorldEdit integration, shrinking safe zones, soup PvP, hotbar kit editors, and autonomous practice bots.
 
 ---
 
 ## Table of Contents
-1. [30-Second Player Quickstart](#30-second-player-quickstart)
-2. [Casual Duels & Wagers](#casual-duels--wagers)
-3. [Competitive Ranked League](#competitive-ranked-league)
-4. [Combat Kits & Hotbar Editor](#combat-kits--hotbar-editor)
-5. [Arenas & Safe Zone Mechanics](#arenas--safe-zone-mechanics)
-6. [Parties & Team Scrimmages](#parties--team-scrimmages)
-7. [Practice Bots](#practice-bots)
-8. [Spectator Betting](#spectator-betting)
-9. [Admin Guide: In-Game Arena Creation](#admin-guide-in-game-arena-creation)
-10. [Complete Command Cheat Sheet](#complete-command-cheat-sheet)
-11. [Permissions Guide](#permissions-guide)
-12. [Server Setup & Connectivity](#server-setup--connectivity)
+1. [Quickstart](#quickstart)
+2. [Player Hub & Duel Privacy (`/duels`)](#player-hub--duel-privacy-duels)
+3. [Casual Duels, Item Betting & Escrow](#casual-duels-item-betting--escrow)
+4. [Competitive Ranked League](#competitive-ranked-league)
+5. [Parties & Team Scrimmages](#parties--team-scrimmages)
+6. [Combat Kits, Soup PvP & Hotbar Editor](#combat-kits-soup-pvp--hotbar-editor)
+7. [Arenas & Safe Zone Mechanics](#arenas--safe-zone-mechanics)
+8. [Practice Bots](#practice-bots)
+9. [Spectator Betting](#spectator-betting)
+10. [Admin In-Game GUI Editor (`/apex editor` & `/pduels editor`)](#admin-in-game-gui-editor-apex-editor--pduels-editor)
+11. [Custom Maps & WorldEdit Creation](#custom-maps--worldedit-creation)
+12. [Complete Command Cheat Sheet](#complete-command-cheat-sheet)
+13. [Permissions Guide](#permissions-guide)
+14. [Server Setup & Connectivity](#server-setup--connectivity)
 
 ---
 
-## 30-Second Player Quickstart
+## Quickstart
 
-| What you want to do | Command to run | What happens next |
+| Goal | Command | Description |
 | :--- | :--- | :--- |
-| **Duel a friend** | `/duel <player>` | Pick a kit &rarr; Pick an arena &rarr; Friend gets preview invite &rarr; Fight! |
-| **Play competitive ranked** | `/ranked` | Opens the Ranked Hub to view your ELO and queue Solo (1v1) or Team (2v2). |
-| **Fight a practice bot** | `/practice <kit> [difficulty]` | Spawns an arena with an AI bot so you can warm up solo anytime. |
-| **Customize your kit hotbar** | `/kiteditor <kit>` | Drag & drop weapons, pearls, and potions to your preferred slots. |
-| **Check your stats & rank** | `/stats` | Displays your ELO, rank badge, win streak, win rate, and match history. |
+| **Open Player Hub** | `/duels` | Central 36-slot dashboard for matchmaking, stats, leaderboards, and privacy settings. |
+| **Duel a Player** | `/duel <player>` | Pick a kit and arena, challenge with optional coin stakes or physical items. |
+| **Wager Items in Escrow** | `/duel <player> item` | Open the 54-slot shared anti-scam escrow window to wager physical items. |
+| **Competitive Ranked** | `/ranked` | Open Ranked Hub to view your ELO and queue Solo (1v1) or Team (2v2). |
+| **Party Management** | `/party` | Open the 27-slot GUI to manage party members, send 1-click invites, and scrimmage. |
+| **Fight a Practice Bot** | `/practice <kit> [difficulty]` | Warm up solo anytime against an AI combatant. |
+| **Customize Kit Hotbar** | `/kiteditor <kit>` | Drag and drop weapons, pearls, and potions into your preferred slots. |
+| **Admin In-Game Editor** | `/apex editor` | Comprehensive GUI to configure arenas, modes, kits, and toggles without YAML editing. |
 
 ---
 
-## Casual Duels & Wagers
+## Player Hub & Duel Privacy (`/duels`)
 
-Casual duels let you challenge any player on the server for fun or money without risking your competitive ELO rank.
+The `/duels` command opens a unified, interactive dashboard accessible to every player:
 
-### 1. Issuing a Challenge
 ```text
-/duel <player>
-/duel <player> spear
-/duel <player> crystal 500
+/duels
 ```
-- If you don't specify a kit or stake, the **Kit Selector GUI** opens automatically.
-- After picking a kit, the **Arena Selector GUI** opens to let you choose the battlefield (e.g. Celestial Bastion, GLACIEM, Colosseum, Sumo, etc.).
-- Optional: Add an amount to place a wager (e.g. `/duel Notch 500`). Both players' money is held safely in escrow.
 
-### 2. Previewing & Accepting an Invite
-When someone challenges you, clickable buttons appear directly in chat:
-- Click **`[PREVIEW & ACCEPT]`** (or type `/duel preview <challenger>`):
-  Opens an interactive preview card displaying the kit gear, arena size/theme, and wager stakes.
-- Click **`[ACCEPT]`** (or type `/duel accept <challenger>`): Accepts immediately.
-- Click **`[DECLINE]`** (or type `/duel decline <challenger>`): Declines the invite.
+### Dashboard Features
+- **Matchmaking Portals:** Quick-queue into Solo (1v1) and Team (2v2) competitive or casual matches with 1 click.
+- **Kit Layout Customizer:** Quick link to the Hotbar Layout Editor for any kit.
+- **Personal Statistics:** Displays current ELO, rank badge, win streak, win rate, and total matches.
+- **Top Leaderboards:** Live top-10 leaderboard rankings.
+- **Duel Request Privacy Toggle:**
+  - Click the **Privacy Bell** inside `/duels` or use the chat commands:
+    ```text
+    /duel toggle
+    /duel privacy
+    ```
+  - When muted, other players cannot send you duel challenges (`"Player is currently not accepting duel requests."`).
+  - Privacy state is persistently tracked in the database across server restarts.
 
-### 3. Casual Rules Guarantee
-- **No ELO Risk:** Winning or losing a `/duel` does **not** change your competitive ELO rating.
-- **Wager Payouts:** If money was staked, the winner takes the pot. On a draw, disconnect, or server restart, coins are automatically refunded.
+---
+
+## Casual Duels, Item Betting & Escrow
+
+Casual duels allow challenging any player on the server for practice, coin stakes, or high-stakes physical item wagers without risking competitive ELO ratings.
+
+### 1. Issuing Challenges
+```text
+/duel <player>               - Opens Kit & Arena selectors
+/duel <player> spear         - Duel with the Spear kit
+/duel <player> crystal 500   - Duel with a 500-coin escrow stake
+/duel <player> item          - Open the shared Item Betting Escrow GUI
+```
+
+### 2. Item Betting Escrow (`/duel <player> item`)
+The physical item betting system enables safe, scam-proof high-stakes wagers:
+- **Shared Escrow Grid:** Opens a 54-slot chest interface divided into Challenger slots (left) and Challenged slots (right).
+- **Anti-Scam Locking Mechanism:**
+  - Both players place the items they want to wager into their designated slots.
+  - When ready, each player clicks their Confirmation Wool button.
+  - **Auto-Reset Guarantee:** If *either* player moves, swaps, or adds an item while in a confirmed state, **both confirmations are immediately revoked** with an alert message. Combat cannot start unless both players lock in the exact final item state.
+- **Pot Payout & Draw Protection:**
+  - Upon victory, the winner receives all escrowed items directly into their inventory (or drops at their feet if full).
+  - If the match draws, disconnects, or the server restarts, all wagered items are safely refunded to their original owners.
+
+### 3. Own Inventory Mode
+- Duel matches can be configured to use players' actual inventories rather than standard kits.
+- On death, the defeated player's items drop naturally on the arena floor.
+- **15-Second Post-Match Looting Window:** A 15-second countdown window gives the winner time to collect the loser's dropped gear before teleporting back to the lobby.
 
 ---
 
 ## Competitive Ranked League
 
-Ranked matchmaking is where your ELO rating, win streaks, and competitive badges are on the line.
+Ranked matchmaking pits players against each other in competitive 1v1 and 2v2 modes with ELO ratings, divisions, and automated promotions.
 
-### 1. Opening the Ranked Hub & Matchmaking
+### 1. Ranked Hub & Matchmaking
 ```text
-/ranked                  - Open competitive Ranked Hub (Solo 1v1 / Team 2v2)
-/ranked menu             - Open the Ranked Hub GUI directly
-/ranked queue <kit>      - Jump directly into matchmaking queue for a kit
-/ranked <kit>            - Quick shortcut (e.g. /ranked spear)
-/ranked leave            - Exit matchmaking queue safely
-/ranked status           - Check current queue time & ±ELO search radius
+/ranked                      - Open the competitive Ranked Hub GUI
+/ranked queue <kit>          - Direct matchmaking queue shortcut
+/queue <kit>                 - Seamless queue alias
+/ranked leave                - Safely exit matchmaking queue
+/leavequeue                  - Seamless exit alias
+/ranked status               - Check current queue time & search radius
 ```
-- **Transparent Aliases:** `/queue <kit>` and `/leavequeue` continue to work seamlessly.
-- **Competitive Profile Banner:** Displays your current Tier, Division, ELO rating, active Win Streak, and Win Rate.
-- **Solo Ranked (1v1):** Click to select your kit and enter the competitive queue.
-- **Team Ranked (2v2):** Form a party of 2 (`/party create`, `/party invite <friend>`), then click to enter team queue.
 
 ### 2. The 18-Division Hierarchy & Automatic Rankups
-Players progress through 6 tiers, each divided into 3 divisions:
+Players climb through 6 tiers, each divided into 3 divisions:
 
 ```text
 Copper I, II, III      (800 - 999 ELO)
@@ -89,39 +117,73 @@ Emerald I, II, III     (1600 - 1799 ELO)
 Netherite I, II, III   (1800+ ELO)
 ```
 
-- **Automatic Rank Promotion:** The moment your ELO satisfies the next rank tier threshold upon winning a ranked match, you are **automatically promoted**!
-  - Full-screen celebration Title (`RANK PROMOTION!`)
-  - Sound effect (`UI_TOAST_CHALLENGE_COMPLETE`)
+- **Automatic Promotions:** The moment your ELO reaches a new tier threshold upon winning a match, promotion triggers automatically:
+  - Celebration title banner (`RANK PROMOTION!`)
+  - Audio fanfare (`UI_TOAST_CHALLENGE_COMPLETE`)
   - Server-wide broadcast announcement
-  - Real-time Lobby Boss Bar badge update
-- **Manual Check (`/rankup`):** Running `/rankup` at any time displays your current rank and the exact remaining ELO needed for your next automatic promotion (or triggers it immediately if pending).
-- **Win Streak Multipliers:** Consecutive wins grant coin multipliers:
+  - Real-time Boss Bar badge update
+- **Manual Promotion Status (`/rankup`):** Displays your current division and the exact ELO points needed for your next promotion.
+- **Win Streak Multipliers:**
   - 3 Wins: **1.25x Coins**
   - 5 Wins: **1.50x Coins**
   - 10+ Wins: **2.00x Coins**
 
 ---
 
-## Combat Kits & Hotbar Editor
+## Parties & Team Scrimmages
 
-Every match equips both players with identical, balanced gear. Your previous inventory and armor are completely saved and automatically restored when the match ends.
+Form parties for 2v2 team queues or instant intra-party scrimmages.
 
-### Popular Built-in Kits
-- **Spear PvP:** Netherite Spear (Impaling, Loyalty, Sharpness), full enchanted Netherite armor, offhand Totem of Undying, 3 Golden Apples, Ender Pearls, and Healing/Harming splash potions.
+### 1. Interactive Party GUI (`/party`)
+Running `/party` (with no arguments), `/party menu`, or `/party gui` opens the 27-slot Party Management interface:
+- **Member Roster:** Displays player heads for each party member with their rank, role, and ping.
+- **Leader Crown Badge:** Indicates the party leader.
+- **Open Slots:** Visual empty slot indicators showing remaining capacity.
+- **Party Scrimmage Button:** Instantly divides the party into Team 1 vs Team 2 and starts a private match.
+- **Disband / Leave Buttons:** Quick 1-click controls to exit or disband the party.
+
+### 2. Visual Party Invite GUI (`/party invite`)
+- Running `/party invite` with no target player opens a 54-slot GUI displaying skulls of all online server players.
+- Clicking any player's head sends an invitation instantly.
+
+### 3. Command Alternatives
+```text
+/party create                - Create a party
+/party invite <player>       - Invite a player directly via command
+/party accept <leader>       - Accept a party invite
+/party split                 - Split party into teams for a scrimmage
+/party leave                 - Leave current party
+/party disband               - Disband party (leader only)
+```
+
+---
+
+## Combat Kits, Soup PvP & Hotbar Editor
+
+Every match equips players with balanced, identical gear. Your pre-match inventory, armor, and location are saved and restored cleanly upon match completion.
+
+### Built-in Kits
+- **Spear PvP:** Netherite Spear (Impaling, Loyalty, Sharpness), enchanted Netherite armor, offhand Totem of Undying, Golden Apples, Ender Pearls, and splash potions.
 - **Crystal PvP:** Netherite armor (Blast Protection IV), Obsidian, End Crystals, Respawn Anchors, Glowstone, Totems, and Crossbows.
-- **NoDebuff (PotPvP):** Diamond armor (Protection IV), Diamond Sword (Sharpness V), Ender Pearls, Speed II & Fire Resistance potions, and full splash Health II potions.
-- **Axe PvP:** Netherite Axe, Netherite Sword, Shield, Crossbow with loaded arrows, and Golden Apples.
-- **Sumo:** Knockback stick on an elevated platform with open drops. Knock the opponent off the ring to win!
+- **NoDebuff (PotPvP):** Protection IV Diamond armor, Sharpness V Diamond Sword, Speed II & Fire Resistance potions, splash Healing II potions, and Ender Pearls.
+- **Soup PvP:** Iron armor, Diamond sword, and inventory loaded with mushroom stew.
+- **Axe PvP:** Netherite Axe, Sword, Shield, Crossbow with loaded arrows, and Golden Apples.
+- **Sumo:** Knockback stick on an elevated ring. Knock the opponent off to win.
+
+### Extended Combat Rules
+- **Instant Soup Healing:** Right-clicking Mushroom Stew, Rabbit Stew, or Beetroot Soup instantly restores **3.5 hearts (7.0 HP)** up to max health and swaps the held bowl to an empty bowl.
+- **Empty Bottle Auto-Removal:** Consuming splash or drinkable potions automatically removes empty glass bottles from the player's inventory, eliminating clutter during high-intensity pot duels.
+- **Custom Cooldown Overrides:** Configurable per-kit cooldowns for Ender Pearls and Golden Apples.
+- **Crafting Lockout:** Disables workbench crafting and inventory 2x2 crafting grids during duels to prevent combat exploits.
 
 ### Hotbar Layout Editor (`/kiteditor`)
-Everyone has their own preferred hotbar layout (e.g. sword in slot 1 vs slot 2, pearls in slot 4 vs slot 9).
 ```text
 /kiteditor <kit>
-/editkit spear
+/editkit <kit>
 ```
-1. Run the command to open your interactive kit editor GUI.
-2. Drag and drop items into whichever hotbar and inventory slots you prefer.
-3. Close the GUI or click **Save**. Whenever you enter a match with that kit, your custom layout will be automatically applied.
+1. Open the interactive kit editor GUI.
+2. Drag and drop weapons, pearls, potions, and food into your preferred slots.
+3. Save your layout. Every match played with that kit will automatically sort your items to match your layout.
 
 ---
 
@@ -130,53 +192,33 @@ Everyone has their own preferred hotbar layout (e.g. sword in slot 1 vs slot 2, 
 Matches take place in isolated arena instances with automatic anti-lag rollback and anti-stall mechanics.
 
 ### 1. Built-in Arena Maps
-1. **Celestial Bastion** (`celestial`) - 159x121x199 majestic community fortress.
-2. **GLACIEM Glacier** (`glaciem`) - 63x26x106 frozen ice and snow citadel.
-3. **Spiritual Sanctuary** (`spiritual`) - 168x83x168 Japanese spiritual shrine grounds.
-4. **Colosseum** (`colosseum`) - Classic roman sand & stone brick gladiatorial stadium.
-5. **Temple of Olympus** (`temple`) - Greek quartz temple with glowing cyan prismarine accents.
-6. **Nether Forge** (`netherforge`) - Blackstone and basalt forge flanked by magma and crimson pylons.
-7. **Cyber Void** (`cybervoid`) - Dark obsidian and neon stained glass cybernetic arena.
-8. **Desert Dune** (`desertdune`) - Red sandstone ruins with terracotta accents.
-9. **Frost Peak** (`frostpeak`) - Packed ice and blue ice glacial arena.
-10. **Sumo Dohyo** (`sumo`) - Circular elevated red and white sumo ring.
+1. **Celestial Bastion** (`celestial`) - 159x121x199 fortress.
+2. **GLACIEM Glacier** (`glaciem`) - 63x26x106 frozen citadel.
+3. **Spiritual Sanctuary** (`spiritual`) - 168x83x168 Japanese shrine grounds.
+4. **Colosseum** (`colosseum`) - Sand and stone gladiatorial stadium.
+5. **Temple of Olympus** (`temple`) - Quartz and prismarine temple.
+6. **Nether Forge** (`netherforge`) - Blackstone and magma forge.
+7. **Cyber Void** (`cybervoid`) - Dark obsidian and neon cyber arena.
+8. **Desert Dune** (`desertdune`) - Red sandstone ruins.
+9. **Frost Peak** (`frostpeak`) - Glacial arena.
+10. **Sumo Dohyo** (`sumo`) - Elevated sumo ring.
 
-### 2. Solid Bedrock Subfloor (Crystal PvP Blast-Proof)
-- Arena platforms feature 3 reinforced solid Bedrock layers directly beneath the combat floor.
-- The arena world floor at `Y=0` has solid Bedrock, Deepslate, and Stone.
-- End Crystals, Respawn Anchors, and TNT can never puncture into the void or drop players into endless void falls.
+### 2. Solid Bedrock Subfloor
+- 3 reinforced solid Bedrock layers directly beneath the arena floor.
+- World floor at `Y=0` has solid Bedrock, Deepslate, and Stone to prevent void drops during End Crystal or Respawn Anchor explosions.
 
-### 3. Shrinking Safe Zones (Anti-Stall & Anti-Lag)
-To prevent players or bots from stalling a fight indefinitely:
-- **Delay:** Safe zone remains full size for the first **3 minutes** (`180s`) of combat.
-- **Warning Alert:** 15 seconds before shrinking begins, a yellow warning title flashes: `BORDER SHRINKING IN 15s!` with bass chimes.
-- **Shrinking In Action:** Over 60 seconds, a visible **ring of flame particles** contracts toward the arena center (down to a minimum 6-block radius).
-- **Out-of-Bounds Damage:** Players outside the flame circle take **4 HP/second** damage and receive an action bar alert `OUTSIDE SAFE ZONE! (-4 HP)`.
-- **10-Minute Hard Timeout:** If a match reaches 10 minutes (`600s`), it automatically terminates as a draw to prevent server memory bloat.
-
----
-
-## Parties & Team Scrimmages
-
-Team up with friends for 2v2 duels or practice against each other.
-
-```text
-/party create
-/party invite <player>
-/party accept <leader>
-/party split
-/party leave
-/party disband
-```
-
-- **Queuing 2v2 Ranked:** Create a party of 2, run `/ranked`, and click **Team Ranked (2v2)**.
-- **Party Scrimmage (`/party split`):** Divides your party into Team 1 vs Team 2 and immediately launches a friendly match so friends can scrimmage each other.
+### 3. Shrinking Safe Zones (Anti-Stall)
+- **Delay:** Safe zone remains full size for the first **3 minutes** (`180s`).
+- **Warning:** 15 seconds before shrinking, a title alert flashes: `BORDER SHRINKING IN 15s!`.
+- **Shrinking:** Contracts over 60 seconds down to a minimum 6-block radius, visible by a ring of flame particles.
+- **Out-of-Bounds Damage:** Players outside take **4 HP/second** damage.
+- **10-Minute Timeout:** Matches terminate as a draw at 10 minutes (`600s`) to prevent server resource exhaustion.
 
 ---
 
 ## Practice Bots
 
-Fight AI-driven practice bots to warm up your mechanics, test kits, or practice solo whenever friends are offline.
+Fight AI-driven practice bots to warm up mechanics, test kit hotbars, or practice solo.
 
 ```text
 /practice <kit> [difficulty]
@@ -187,7 +229,7 @@ Fight AI-driven practice bots to warm up your mechanics, test kits, or practice 
 
 ### Bot Difficulties
 - **`easy`** - Relaxed movement, 6-8 CPS, basic melee tracking.
-- **`medium`** - Strafing, 9-11 CPS, responsive knockback recovery, basic potion healing.
+- **`medium`** - Strafing, 9-11 CPS, knockback recovery, basic potion healing.
 - **`hard`** - Aggressive strafing, 12-14 CPS, tactical pearl tracking, fast potion cycling.
 - **`apex`** - Maximum CPS, precision combo chains, optimal shield & anchor timing.
 
@@ -195,83 +237,77 @@ Fight AI-driven practice bots to warm up your mechanics, test kits, or practice 
 
 ## Spectator Betting
 
-Spectators can watch live matches from the spectator platform and place wagers on active duelists before combat begins.
+Spectators can watch live matches and place wagers on active duelists before combat begins.
 
 ```text
 /bet <player> <amount>
 /bet Notch 250
 ```
 
-- Bets can be placed during the `PREPARING` and `COUNTDOWN` phases.
-- Payouts use a pari-mutuel pool: winning spectators divide the losing pool in proportion to their bets.
+- Bets can be placed during `PREPARING` and `COUNTDOWN` phases.
+- Payouts use a pari-mutuel pool: winning spectators divide the losing pool in proportion to their wagers.
 
 ---
 
-## Admin Guide: Custom Maps & In-Game Arena Creation
+## Admin In-Game GUI Editor (`/apex editor` & `/pduels editor`)
 
-Server Admins and OPs can upload custom schematic maps or create brand-new arenas directly in-game without manually editing YAML files.
+Server administrators can manage the entire duels system visually without manually editing YAML configuration files.
+
+```text
+/apex editor
+/pduels editor
+```
+
+### 1. Root Editor Navigation
+- **Arenas:** Visual list of all configured arena templates.
+- **Game Modes:** Toggle enabled kits and rulesets.
+- **Settings:** General settings and match timeouts.
+- **Reload:** Hot-reload configs, kits, and arena templates with zero server downtime.
+
+### 2. Visual Arena Manager (54-Slot Grid)
+- **Status Indicators:**
+  - **Lime Wool:** Arena active and available for matchmaking.
+  - **Red Wool:** Arena under maintenance.
+- **Quick Controls:** Click any arena to enter its Detail Editor, or click the Nether Star to create a new arena.
+
+### 3. Arena Detail Editor
+- **Maintenance Toggle:** Enable/disable an arena instantly.
+- **Auto-Rollback Toggle:** Enable or disable automated block rollback upon match completion.
+- **Lobby Teleport Toggle:** Control whether players return to lobby after matches.
+- **1-Click Spawn Setting:**
+  - Click **Spawn A** to set Player 1 spawn at your current player coordinates.
+  - Click **Spawn B** to set Player 2 spawn at your current player coordinates.
+  - Click **Spectator Spawn** to set the floating spectator view point.
+  - Click **FFA Spawn** to set the multi-player deathmatch spawn.
+- **Clone Arena:** Duplicate an existing arena template and its coordinates with one click.
+- **Delete Arena:** Remove an arena template from memory and `arenas.yml`.
+
+---
+
+## Custom Maps & WorldEdit Creation
 
 ### 1. Uploading Custom Maps (`plugins/ApexPvP/maps/`)
-Admins can upload any `.schem` or `.schematic` file directly to the server:
-1. Drop your schematic file into `plugins/ApexPvP/maps/` (e.g. `castle.schem`).
-2. In-game, run:
+1. Place `.schem` or `.schematic` files into `plugins/ApexPvP/maps/` (e.g. `gladiator.schem`).
+2. Run in-game:
    ```text
-   /arena import castle.schem castle "Castle Arena"
+   /arena import gladiator.schem gladiator "Gladiator Arena"
    ```
-   *The command autocompletes all uploaded maps in your folder, calculates the bounding box, registers the template, saves to `arenas.yml`, and pastes instance 0.*
+   *The command autocompletes files from the maps directory, calculates dimensions, registers the template, and generates instance 0.*
 3. Set your spawns:
    ```text
-   /arena setspawn castle a
-   /arena setspawn castle b
-   /arena setspawn castle spec
+   /arena setspawn gladiator a
+   /arena setspawn gladiator b
+   /arena setspawn gladiator spec
    ```
-4. The arena is instantly live and ready for duels!
 
-### 2. Creating a Map with WorldEdit (`//wand`)
-1. Equip the WorldEdit wand:
-   ```text
-   //wand
-   ```
-2. Left-click corner 1 (`pos1`) and Right-click opposite corner 2 (`pos2`) around your map.
-3. Run the creation command:
+### 2. Creating an Arena with WorldEdit (`//wand`)
+1. Select corner 1 and corner 2 using `//wand`.
+2. Register the arena:
    ```text
    /arena create <id> "<Display Name>"
-   /arena create neo_tokyo "Neo Tokyo Arena"
+   /arena create neo_arena "Neo Arena"
    ```
-   *The plugin captures your WorldEdit bounds, centers coordinates, registers the template, and allocates instance 0 immediately.*
-4. If you don't have a WorldEdit selection, you can pass a custom radius instead:
-   ```text
-   /arena create neo_tokyo "Neo Tokyo Arena" 35
-   ```
-
-### 2. Setting Arena Spawn Points
-Stand at the exact location and look in the direction you want players to face:
-- **Set Player 1 Spawn:**
-  ```text
-  /arena setspawn <id> a
-  ```
-- **Set Player 2 Spawn:**
-  ```text
-  /arena setspawn <id> b
-  ```
-- **Set Spectator Floating Spawn:**
-  ```text
-  /arena setspawn <id> spec
-  ```
-
-### 3. Inspecting & Managing Arenas
-- **List all loaded templates & instances:**
-  ```text
-  /arena list
-  ```
-- **Teleport to an arena's spectator spawn:**
-  ```text
-  /arena tp <id>
-  ```
-- **Hot-reload arenas and rebuild platforms:**
-  ```text
-  /arena reload
-  ```
+3. Set spawns using `/arena setspawn <id> <a|b|spec>` or via `/apex editor`.
 
 ---
 
@@ -281,50 +317,54 @@ Stand at the exact location and look in the direction you want players to face:
 
 | Command | Usage | Description |
 | :--- | :--- | :--- |
-| `/duel` | `/duel <player> [kit] [stake]` | Issue a 1v1 casual duel challenge (opens Kit/Arena GUI if omitted) |
+| `/duels` | `/duels` | Open the main Player Hub GUI |
+| `/duel` | `/duel <player> [kit] [stake]` | Issue a 1v1 casual duel challenge |
+| `/duel item` | `/duel <player> item` | Open the Item Betting Escrow GUI |
+| `/duel toggle` | `/duel toggle` | Toggle accepting/muting duel requests |
 | `/duel accept` | `/duel accept <player>` | Accept a pending duel challenge |
 | `/duel decline` | `/duel decline <player>` | Decline a pending duel challenge |
-| `/duel preview` | `/duel preview <player>` | Open the interactive preview card showing kit, arena, and stakes |
-| `/ranked` | `/ranked [menu\|queue <kit>\|leave\|status]` | Competitive hub, direct kit queuing, leaving, and status |
-| `/queue` | `/queue <kit>` | Quick alias to join ranked matchmaking queue |
-| `/leavequeue` | `/leavequeue` | Quick alias to exit ranked matchmaking queue |
-| `/practice` | `/practice <kit> [difficulty]` | Start a PvE battle against an AI practice bot |
-| `/kits` | `/kits` | Open the visual kit showcase and preview menu |
-| `/kiteditor` | `/kiteditor <kit>` | Open the custom hotbar layout editor for a kit |
-| `/stats` | `/stats [player]` | View your or another player's ELO, rank, streaks, and win rate |
-| `/top` | `/top [elo\|wins\|streak\|<kit>]` | View top-10 cached competitive leaderboards |
-| `/rankup` | `/rankup` | Check current rank and exact remaining ELO needed for promotion |
-| `/party create` | `/party create` | Create a new party |
-| `/party invite` | `/party invite <player>` | Invite a player to your party |
-| `/party accept` | `/party accept <leader>` | Accept an invite to join a party |
-| `/party split` | `/party split` | Split your party into two teams for an instant scrimmage |
-| `/party leave` | `/party leave` | Leave your current party |
-| `/party disband` | `/party disband` | Disband your party (leader only) |
-| `/bet` | `/bet <player> <amount>` | Wager coins on an active duel combatant as a spectator |
+| `/duel preview` | `/duel preview <player>` | Open preview card showing kit, arena, and stakes |
+| `/ranked` | `/ranked [menu\|queue <kit>\|leave\|status]` | Competitive hub, matchmaking queues, and status |
+| `/queue` | `/queue <kit>` | Quick alias to join ranked queue |
+| `/leavequeue` | `/leavequeue` | Quick alias to exit ranked queue |
+| `/party` | `/party [menu\|gui]` | Open interactive 27-slot Party GUI |
+| `/party invite` | `/party invite [player]` | Open online player picker GUI or invite by name |
+| `/party split` | `/party split` | Split party into two teams for an instant scrimmage |
+| `/party leave` | `/party leave` | Leave current party |
+| `/party disband` | `/party disband` | Disband party (leader only) |
+| `/practice` | `/practice <kit> [difficulty]` | Start battle against an AI practice bot |
+| `/kits` | `/kits` | Open the visual kit showcase menu |
+| `/kiteditor` | `/kiteditor <kit>` | Open custom hotbar layout editor |
+| `/stats` | `/stats [player]` | View your or another player's ELO and statistics |
+| `/top` | `/top [elo\|wins\|streak\|<kit>]` | View top-10 competitive leaderboards |
+| `/rankup` | `/rankup` | Check current rank and ELO needed for next promotion |
+| `/bet` | `/bet <player> <amount>` | Wager coins on an active combatant as a spectator |
 
-### Staff & Admin Commands (`apexpvp.admin` / OP)
+### Admin & Staff Commands (`apexpvp.admin` / OP)
 
 | Command | Usage | Description |
 | :--- | :--- | :--- |
-| `/arena create` | `/arena create <id> [displayName] [radius]` | Register a new arena from WorldEdit selection or radius |
-| `/arena import` | `/arena import <file> <id> [displayName]` | Import uploaded `.schem`/`.schematic` map from `maps/` folder |
-| `/arena setspawn` | `/arena setspawn <id> <a\|b\|spec>` | Set relative spawn points at your player's exact location |
-| `/arena tp` | `/arena tp <id>` | Teleport to the spectator spawn of an arena template |
-| `/arena list` | `/arena list` | View all loaded arena templates and active game instances |
-| `/arena reload` | `/arena reload` | Reload `arenas.yml` and rebuild standby arena platforms |
+| `/apex editor` | `/apex editor` | Open the main Admin In-Game GUI Editor |
+| `/pduels editor`| `/pduels editor` | Alias for the Admin In-Game GUI Editor |
+| `/arena create` | `/arena create <id> [displayName] [radius]` | Register arena from WorldEdit selection or radius |
+| `/arena import` | `/arena import <file> <id> [displayName]` | Import uploaded `.schem` map from `maps/` folder |
+| `/arena setspawn`| `/arena setspawn <id> <a\|b\|spec\|ffa>` | Set relative spawn points at current location |
+| `/arena tp` | `/arena tp <id>` | Teleport to spectator spawn of an arena template |
+| `/arena list` | `/arena list` | View loaded arena templates and game instances |
+| `/arena reload` | `/arena reload` | Reload `arenas.yml` and rebuild standby platforms |
 | `/apex reload` | `/apex reload` | Reload `config.yml`, kits, and database settings |
 | `/apex eco` | `/apex eco <give\|take\|set> <player> <amt>` | Manage player coin balances |
-| `/apex simduel` | `/apex simduel <kit> [diff] [stake]` | Launch a full 2-bot combat simulation for testing |
+| `/apex simduel` | `/apex simduel <kit> [diff] [stake]` | Launch 2-bot combat simulation for testing |
 
 ---
 
 ## Permissions Guide
 
 ```yaml
-# Player Permissions (Granted by default)
-apexpvp.duel: true          # /duel, /duel preview, accept, decline
+# Player Permissions (Default: All Players)
+apexpvp.duel: true          # /duels, /duel, /duel preview, accept, decline, toggle
 apexpvp.queue: true         # /queue, /leavequeue, /ranked
-apexpvp.party: true         # /party commands
+apexpvp.party: true         # /party commands and Party GUI
 apexpvp.practice: true      # /practice (bot fights)
 apexpvp.kit: true           # /kits and /kiteditor
 apexpvp.stats: true         # /stats and /profile
@@ -333,8 +373,8 @@ apexpvp.rankup: true        # /rankup promotions
 apexpvp.bet: true           # /bet spectator wagers
 
 # Staff & Admin Permissions (Default: OP)
+apexpvp.admin: true         # /apex editor, /pduels editor, /apex eco, reload, simduel
 apexpvp.arena.admin: true   # /arena create, setspawn, tp, reload
-apexpvp.admin: true         # /apex eco, reload, simduel
 apexpvp.kit.admin: true     # /kits create, delete, configure
 ```
 
@@ -358,10 +398,10 @@ apexpvp.kit.admin: true     # /kits create, delete, configure
 
 ### Compiling from Source
 ```bash
-# Compile and run test suite (96+ unit tests)
+# Run full test suite (100+ unit tests with 100% pass rate)
 ./gradlew check
 
-# Build shaded plugin jar
+# Build shaded production plugin jar
 ./gradlew shadowJar
 
 # The compiled jar is located at:

@@ -3,6 +3,7 @@ package com.apexpvp.command;
 import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.arena.ArenaTemplate;
 import com.apexpvp.kit.Kit;
+import com.apexpvp.profile.PlayerProfile;
 import com.apexpvp.util.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -42,12 +43,35 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 0) {
-            TextUtil.sendPrefixed(player, "<yellow>Usage: /duel <player> [kit] [stake] OR /duel <accept|decline> <player>");
+        if (args.length == 0 || args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("gui")) {
+            plugin.getDuelsMenuGUI().open(player);
             return true;
         }
 
         String sub = args[0].toLowerCase();
+
+        // Admin Visual Editor: /duel editor or /pduels editor
+        if (sub.equals("editor")) {
+            if (!player.hasPermission("apexpvp.admin")) {
+                sender.sendMessage(TextUtil.parse("<red>You do not have permission to access the admin editor."));
+                return true;
+            }
+            plugin.getAdminEditorGUI().open(player);
+            return true;
+        }
+
+        // Privacy Toggle: /duel toggle or /duel privacy
+        if (sub.equals("toggle") || sub.equals("privacy")) {
+            PlayerProfile prof = plugin.getProfileManager().getProfile(player.getUniqueId());
+            if (prof != null) {
+                boolean next = !prof.isAllowDuelRequests();
+                prof.setAllowDuelRequests(next);
+                TextUtil.sendPrefixed(player, next
+                        ? "<green>Incoming duel requests are now <bold>ENABLED</bold>."
+                        : "<yellow>Incoming duel requests are now <bold>MUTED</bold>.");
+            }
+            return true;
+        }
 
         // 0. Preview Challenge
         if (sub.equals("preview")) {
@@ -111,6 +135,12 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        PlayerProfile targetProfile = plugin.getProfileManager().getProfile(target.getUniqueId());
+        if (targetProfile != null && !targetProfile.isAllowDuelRequests()) {
+            TextUtil.sendPrefixed(player, "<red>" + target.getName() + " has disabled incoming duel requests.");
+            return true;
+        }
+
         if (plugin.getMatchManager().isInMatch(player) || plugin.getMatchManager().isInMatch(target)) {
             TextUtil.sendPrefixed(player, "<red>Either you or the target is currently in a match.");
             return true;
@@ -119,6 +149,22 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
         // When only target is provided, open interactive GUI for kit selection
         if (args.length == 1) {
             plugin.getDuelKitGUI().open(player, target, 0.0);
+            return true;
+        }
+
+        // Real item wager escrow: /duel <target> item
+        if (args[1].equalsIgnoreCase("item") || args[1].equalsIgnoreCase("items") || args[1].equalsIgnoreCase("wager")) {
+            Kit defaultKit = plugin.getKitManager().getKit("nodebuff");
+            if (defaultKit == null && !plugin.getKitManager().getAllKits().isEmpty()) {
+                defaultKit = plugin.getKitManager().getAllKits().iterator().next();
+            }
+            ArenaTemplate defaultArena = plugin.getArenaManager().getAllTemplates().isEmpty()
+                    ? null : plugin.getArenaManager().getAllTemplates().iterator().next();
+            if (defaultArena == null || defaultKit == null) {
+                TextUtil.sendPrefixed(player, "<red>Cannot start item bet: No arenas or kits registered.");
+                return true;
+            }
+            plugin.getItemBettingGUI().open(player, target, defaultKit, defaultArena);
             return true;
         }
 
@@ -167,6 +213,9 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             completions.add("accept");
             completions.add("decline");
             completions.add("preview");
+            completions.add("menu");
+            completions.add("toggle");
+            completions.add("privacy");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (!p.getName().equalsIgnoreCase(sender.getName())) {
                     completions.add(p.getName());

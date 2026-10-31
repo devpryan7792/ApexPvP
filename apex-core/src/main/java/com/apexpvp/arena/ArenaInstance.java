@@ -120,6 +120,11 @@ public class ArenaInstance {
     }
 
     @NotNull
+    public Location getOriginLocation() {
+        return new Location(world, originX, originY, originZ);
+    }
+
+    @NotNull
     public ArenaBounds getBounds() {
         return bounds;
     }

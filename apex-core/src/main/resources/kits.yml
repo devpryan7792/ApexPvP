@@ -11,6 +11,7 @@ kits:
       allow-hunger: true
       combo-mode: false
       sumo-mode: false
+      remove-empty-bottles: true
     armor:
       helmet: "DIAMOND_HELMET:1:ENCHANTS=protection=4,unbreaking=3"
       chestplate: "DIAMOND_CHESTPLATE:1:ENCHANTS=protection=4,unbreaking=3"
@@ -301,4 +302,61 @@ kits:
       33: "SPLASH_POTION:1:POTION=STRONG_HEALING"
       34: "SPLASH_POTION:1:POTION=STRONG_HEALING"
       35: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+
+  soup:
+    display-name: "<gradient:#FFAA00:#FF5555>Soup PvP</gradient>"
+    icon: "MUSHROOM_STEW"
+    rules:
+      allow-build: false
+      allow-hunger: false
+      combo-mode: false
+      sumo-mode: false
+      soup-mode: true
+      remove-empty-bottles: true
+      disable-crafting: true
+      ender-pearl-cooldown: 15
+      golden-apple-cooldown: 0
+    armor:
+      helmet: "IRON_HELMET:1:ENCHANTS=protection=2,unbreaking=3"
+      chestplate: "IRON_CHESTPLATE:1:ENCHANTS=protection=2,unbreaking=3"
+      leggings: "IRON_LEGGINGS:1:ENCHANTS=protection=2,unbreaking=3"
+      boots: "IRON_BOOTS:1:ENCHANTS=protection=2,unbreaking=3"
+    offhand: ""
+    main-items:
+      0: "DIAMOND_SWORD:1:ENCHANTS=sharpness=1,unbreaking=3"
+      1: "MUSHROOM_STEW:1"
+      2: "MUSHROOM_STEW:1"
+      3: "MUSHROOM_STEW:1"
+      4: "MUSHROOM_STEW:1"
+      5: "MUSHROOM_STEW:1"
+      6: "MUSHROOM_STEW:1"
+      7: "MUSHROOM_STEW:1"
+      8: "MUSHROOM_STEW:1"
+      9: "MUSHROOM_STEW:1"
+      10: "MUSHROOM_STEW:1"
+      11: "MUSHROOM_STEW:1"
+      12: "MUSHROOM_STEW:1"
+      13: "MUSHROOM_STEW:1"
+      14: "MUSHROOM_STEW:1"
+      15: "MUSHROOM_STEW:1"
+      16: "MUSHROOM_STEW:1"
+      17: "MUSHROOM_STEW:1"
+      18: "MUSHROOM_STEW:1"
+      19: "MUSHROOM_STEW:1"
+      20: "MUSHROOM_STEW:1"
+      21: "MUSHROOM_STEW:1"
+      22: "MUSHROOM_STEW:1"
+      23: "MUSHROOM_STEW:1"
+      24: "MUSHROOM_STEW:1"
+      25: "MUSHROOM_STEW:1"
+      26: "MUSHROOM_STEW:1"
+      27: "MUSHROOM_STEW:1"
+      28: "MUSHROOM_STEW:1"
+      29: "MUSHROOM_STEW:1"
+      30: "MUSHROOM_STEW:1"
+      31: "MUSHROOM_STEW:1"
+      32: "MUSHROOM_STEW:1"
+      33: "MUSHROOM_STEW:1"
+      34: "MUSHROOM_STEW:1"
+      35: "MUSHROOM_STEW:1"
 

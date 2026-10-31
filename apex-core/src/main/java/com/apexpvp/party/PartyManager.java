@@ -131,6 +131,10 @@ public class PartyManager {
         return true;
     }
 
+    public void unregisterPlayerFromParty(@NotNull UUID uuid) {
+        partiesByPlayer.remove(uuid);
+    }
+
     public boolean disbandParty(@NotNull Player leader) {
         Party party = partiesByPlayer.get(leader.getUniqueId());
         if (party == null || !party.isLeader(leader.getUniqueId())) {

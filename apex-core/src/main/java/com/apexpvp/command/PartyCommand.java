@@ -41,7 +41,12 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 0) {
+        if (args.length == 0 || args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("gui")) {
+            plugin.getPartyGUI().open(player);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("help")) {
             sendHelp(player);
             return true;
         }

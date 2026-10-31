@@ -238,6 +238,7 @@ public class ArenaManager {
                 ArenaTemplate.SpawnPoint spawnA = readSpawn(tSec.getConfigurationSection("spawns.spawn-a"), -15, 1, 0, -90, 0);
                 ArenaTemplate.SpawnPoint spawnB = readSpawn(tSec.getConfigurationSection("spawns.spawn-b"), 15, 1, 0, 90, 0);
                 ArenaTemplate.SpawnPoint specSpawn = readSpawn(tSec.getConfigurationSection("spawns.spectator"), 0, 15, 0, 0, 45);
+                ArenaTemplate.SpawnPoint ffaSpawn = readSpawn(tSec.getConfigurationSection("spawns.ffa"), 0, 1, 0, 0, 0);
 
                 boolean allowBuild = tSec.getBoolean("rules.allow-build", true);
                 boolean allowBreak = tSec.getBoolean("rules.allow-block-break", true);
@@ -245,10 +246,16 @@ public class ArenaManager {
                 int maxBuildY = tSec.getInt("rules.max-build-y", 84);
                 String schematic = tSec.getString("schematic");
 
+                boolean enabled = tSec.getBoolean("enabled", true);
+                boolean regeneration = tSec.getBoolean("regeneration", true);
+                boolean teleportToLobby = tSec.getBoolean("teleport-to-lobby", true);
+                List<String> allowedModes = tSec.getStringList("allowed-modes");
+
                 ArenaTemplate template = new ArenaTemplate(
                         templateId, key, displayName, relativeBounds,
-                        spawnA, spawnB, specSpawn,
-                        allowBuild, allowBreak, minBuildY, maxBuildY, schematic
+                        spawnA, spawnB, specSpawn, ffaSpawn,
+                        allowBuild, allowBreak, minBuildY, maxBuildY, schematic,
+                        enabled, regeneration, teleportToLobby, allowedModes
                 );
 
                 templates.put(key.toLowerCase(), template);
@@ -596,6 +603,16 @@ public class ArenaManager {
         return list != null ? list : Collections.emptyList();
     }
 
+    @Nullable
+    public ArenaInstance getInstance(@NotNull String templateId, int index) {
+        List<ArenaInstance> list = getInstances(templateId);
+        if (list.isEmpty()) return null;
+        if (index >= 0 && index < list.size()) {
+            return list.get(index);
+        }
+        return list.get(0);
+    }
+
     public int getTotalInstanceCount() {
         int count = 0;
         for (List<ArenaInstance> list : instances.values()) {
@@ -688,6 +705,63 @@ public class ArenaManager {
         return true;
     }
 
+    public boolean setSpawnA(@NotNull String templateId, @NotNull Location loc) {
+        ArenaTemplate template = getTemplate(templateId);
+        if (template == null) return false;
+        int originX = template.getTemplateId() * 1000;
+        int originY = 64;
+        int originZ = 0;
+        if (arenaWorld != null && loc.getWorld() != null && loc.getWorld().equals(arenaWorld)) {
+            ArenaInstance inside = findInstanceAt(loc);
+            if (inside != null) {
+                originX = inside.getOriginX();
+                originY = inside.getOriginY();
+                originZ = inside.getOriginZ();
+            }
+        }
+        return updateSpawnA(templateId, new ArenaTemplate.SpawnPoint(
+                loc.getX() - originX, loc.getY() - originY, loc.getZ() - originZ,
+                loc.getYaw(), loc.getPitch()));
+    }
+
+    public boolean setSpawnB(@NotNull String templateId, @NotNull Location loc) {
+        ArenaTemplate template = getTemplate(templateId);
+        if (template == null) return false;
+        int originX = template.getTemplateId() * 1000;
+        int originY = 64;
+        int originZ = 0;
+        if (arenaWorld != null && loc.getWorld() != null && loc.getWorld().equals(arenaWorld)) {
+            ArenaInstance inside = findInstanceAt(loc);
+            if (inside != null) {
+                originX = inside.getOriginX();
+                originY = inside.getOriginY();
+                originZ = inside.getOriginZ();
+            }
+        }
+        return updateSpawnB(templateId, new ArenaTemplate.SpawnPoint(
+                loc.getX() - originX, loc.getY() - originY, loc.getZ() - originZ,
+                loc.getYaw(), loc.getPitch()));
+    }
+
+    public boolean setSpectatorSpawn(@NotNull String templateId, @NotNull Location loc) {
+        ArenaTemplate template = getTemplate(templateId);
+        if (template == null) return false;
+        int originX = template.getTemplateId() * 1000;
+        int originY = 64;
+        int originZ = 0;
+        if (arenaWorld != null && loc.getWorld() != null && loc.getWorld().equals(arenaWorld)) {
+            ArenaInstance inside = findInstanceAt(loc);
+            if (inside != null) {
+                originX = inside.getOriginX();
+                originY = inside.getOriginY();
+                originZ = inside.getOriginZ();
+            }
+        }
+        return updateSpectatorSpawn(templateId, new ArenaTemplate.SpawnPoint(
+                loc.getX() - originX, loc.getY() - originY, loc.getZ() - originZ,
+                loc.getYaw(), loc.getPitch()));
+    }
+
     public void saveTemplateToConfig(@NotNull ArenaTemplate template) {
         File arenasFile = new File(plugin.getDataFolder(), "arenas.yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(arenasFile);
@@ -725,6 +799,18 @@ public class ArenaManager {
         config.set(path + ".spawns.spectator.yaw", spec.yaw());
         config.set(path + ".spawns.spectator.pitch", spec.pitch());
 
+        ArenaTemplate.SpawnPoint ffa = template.getRelativeFfaSpawn();
+        config.set(path + ".spawns.ffa.x", ffa.x());
+        config.set(path + ".spawns.ffa.y", ffa.y());
+        config.set(path + ".spawns.ffa.z", ffa.z());
+        config.set(path + ".spawns.ffa.yaw", ffa.yaw());
+        config.set(path + ".spawns.ffa.pitch", ffa.pitch());
+
+        config.set(path + ".enabled", template.isEnabled());
+        config.set(path + ".regeneration", template.isRegeneration());
+        config.set(path + ".teleport-to-lobby", template.isTeleportToLobby());
+        config.set(path + ".allowed-modes", template.getAllowedModes());
+
         config.set(path + ".rules.allow-build", template.isAllowBuild());
         config.set(path + ".rules.allow-block-break", template.isAllowBlockBreak());
         config.set(path + ".rules.min-build-y", template.getMinBuildY());
@@ -738,6 +824,86 @@ public class ArenaManager {
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save arena template " + template.getId() + " to arenas.yml", e);
         }
+    }
+
+    public boolean setArenaEnabled(@NotNull String templateId, boolean enabled) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withEnabled(enabled);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean setArenaRegeneration(@NotNull String templateId, boolean regen) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withRegeneration(regen);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean setArenaTeleportToLobby(@NotNull String templateId, boolean toLobby) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withTeleportToLobby(toLobby);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean setArenaAllowedModes(@NotNull String templateId, @NotNull java.util.List<String> modes) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withAllowedModes(modes);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean setFfaSpawn(@NotNull String templateId, @NotNull ArenaTemplate.SpawnPoint ffaSpawn) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withFfaSpawn(ffaSpawn);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean cloneArena(@NotNull String sourceId, @NotNull String newId, @NotNull String newDisplayName) {
+        ArenaTemplate source = templates.get(sourceId.toLowerCase());
+        if (source == null || templates.containsKey(newId.toLowerCase())) return false;
+        int nextId = templates.values().stream().mapToInt(ArenaTemplate::getTemplateId).max().orElse(0) + 1;
+        ArenaTemplate cloned = new ArenaTemplate(
+                nextId, newId, newDisplayName, source.getRelativeBounds(),
+                source.getRelativeSpawnA(), source.getRelativeSpawnB(), source.getRelativeSpectatorSpawn(),
+                source.getRelativeFfaSpawn(), source.isAllowBuild(), source.isAllowBlockBreak(),
+                source.getMinBuildY(), source.getMaxBuildY(), source.getSchematicFile(),
+                source.isEnabled(), source.isRegeneration(), source.isTeleportToLobby(), source.getAllowedModes()
+        );
+        templates.put(newId.toLowerCase(), cloned);
+        instances.put(newId.toLowerCase(), new java.util.concurrent.CopyOnWriteArrayList<>());
+        saveTemplateToConfig(cloned);
+        allocateInitialInstance(cloned);
+        return true;
+    }
+
+    public boolean deleteArena(@NotNull String templateId) {
+        String key = templateId.toLowerCase();
+        if (!templates.containsKey(key)) return false;
+        templates.remove(key);
+        java.util.List<ArenaInstance> instList = instances.remove(key);
+        if (instList != null) {
+            instList.clear();
+        }
+        File arenasFile = new File(plugin.getDataFolder(), "arenas.yml");
+        FileConfiguration config = YamlConfiguration.loadConfiguration(arenasFile);
+        config.set("templates." + key, null);
+        try {
+            config.save(arenasFile);
+        } catch (Exception ignored) {}
+        return true;
     }
 
     public void reloadTemplates() {

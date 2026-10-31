@@ -58,6 +58,18 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
             case "arena" -> {
                 return handleArena(sender, args);
             }
+            case "editor" -> {
+                if (!sender.hasPermission("apexpvp.admin")) {
+                    sender.sendMessage(TextUtil.parse("<red>You do not have permission to access the admin editor."));
+                    return true;
+                }
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(TextUtil.parse("<red>Only players can open the visual editor."));
+                    return true;
+                }
+                plugin.getAdminEditorGUI().open(player);
+                return true;
+            }
             case "eco" -> {
                 return handleEco(sender, args);
             }
@@ -391,6 +403,7 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(TextUtil.parse("<dark_gray>----------------- <gradient:#00FFAA:#00AAFF><bold>APEXPVP COMMANDS</bold></gradient> <dark_gray>-----------------"));
+        sender.sendMessage(TextUtil.parse("<gold>/apex editor <gray>- Open the Visual In-Game Admin Editor GUI"));
         sender.sendMessage(TextUtil.parse("<gold>/apex arena <list|create|dupe|tp|setspawnA|setspawnB|setspec> <gray>- Arena grid manager"));
         sender.sendMessage(TextUtil.parse("<gold>/apex simduel <kit> [difficulty] [stake] <gray>- Solo 2-player combat simulation"));
         sender.sendMessage(TextUtil.parse("<gold>/apex eco <give|take|set> <player> <amount> <gray>- Administrative economy management"));
@@ -407,7 +420,7 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                                                 @NotNull String label,
                                                 @NotNull String[] args) {
         if (args.length == 1) {
-            List<String> list = new ArrayList<>(Arrays.asList("arena", "simduel", "eco", "reload", "help"));
+            List<String> list = new ArrayList<>(Arrays.asList("editor", "arena", "simduel", "eco", "reload", "help"));
             return list;
         }
 
