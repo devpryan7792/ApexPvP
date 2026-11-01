@@ -1,0 +1,365 @@
+# ==============================================================================
+#                      ApexPvP Arena Templates Configuration
+# ==============================================================================
+
+templates:
+  colosseum:
+    template-id: 1
+    display-name: "<gradient:#FFAA00:#FF5555>Colosseum</gradient>"
+    bounds:
+      min-x: -30
+      min-y: 0
+      min-z: -30
+      max-x: 30
+      max-y: 40
+      max-z: 30
+    spawns:
+      spawn-a:
+        x: -18.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 18.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 15.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 84
+    schematic: "colosseum.schem"
+
+  temple:
+    template-id: 2
+    display-name: "<gradient:#00FFAA:#00AAFF>Temple of Olympus</gradient>"
+    bounds:
+      min-x: -30
+      min-y: 0
+      min-z: -30
+      max-x: 30
+      max-y: 40
+      max-z: 30
+    spawns:
+      spawn-a:
+        x: -18.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 18.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 15.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 84
+    schematic: "temple.schem"
+
+  netherforge:
+    template-id: 3
+    display-name: "<gradient:#FF3333:#880000>Nether Forge</gradient>"
+    bounds:
+      min-x: -30
+      min-y: 0
+      min-z: -30
+      max-x: 30
+      max-y: 40
+      max-z: 30
+    spawns:
+      spawn-a:
+        x: -18.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 18.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 15.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 84
+    schematic: "netherforge.schem"
+
+  cybervoid:
+    template-id: 4
+    display-name: "<gradient:#FF00FF:#00FFFF>Cyber Void</gradient>"
+    bounds:
+      min-x: -30
+      min-y: 0
+      min-z: -30
+      max-x: 30
+      max-y: 40
+      max-z: 30
+    spawns:
+      spawn-a:
+        x: -18.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 18.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 15.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 84
+    schematic: "cybervoid.schem"
+
+  desertdune:
+    template-id: 5
+    display-name: "<gradient:#FFCC00:#FF6600>Desert Dune</gradient>"
+    bounds:
+      min-x: -30
+      min-y: 0
+      min-z: -30
+      max-x: 30
+      max-y: 40
+      max-z: 30
+    spawns:
+      spawn-a:
+        x: -18.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 18.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 15.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 84
+    schematic: "desertdune.schem"
+
+  frostpeak:
+    template-id: 6
+    display-name: "<gradient:#AACCFF:#FFFFFF>Frost Peak</gradient>"
+    bounds:
+      min-x: -30
+      min-y: 0
+      min-z: -30
+      max-x: 30
+      max-y: 40
+      max-z: 30
+    spawns:
+      spawn-a:
+        x: -18.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 18.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 15.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 84
+    schematic: "frostpeak.schem"
+
+  sumo:
+    template-id: 7
+    display-name: "<gradient:#FF5555:#FFAA00>Sumo Ring</gradient>"
+    bounds:
+      min-x: -15
+      min-y: 0
+      min-z: -15
+      max-x: 15
+      max-y: 30
+      max-z: 15
+    spawns:
+      spawn-a:
+        x: -4.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 4.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 8.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: false
+      allow-block-break: false
+      min-build-y: 64
+      max-build-y: 70
+    schematic: "sumo.schem"
+
+  celestial:
+    template-id: 8
+    display-name: "<gradient:#FFD700:#FF8C00>Celestial Bastion</gradient>"
+    bounds:
+      min-x: -80
+      min-y: 0
+      min-z: -100
+      max-x: 80
+      max-y: 125
+      max-z: 100
+    spawns:
+      spawn-a:
+        x: -40.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 40.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 35.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 120
+    schematic: "celestial.schem"
+
+  glaciem:
+    template-id: 9
+    display-name: "<gradient:#00FFFF:#0088FF>GLACIEM Arena</gradient>"
+    bounds:
+      min-x: -32
+      min-y: 0
+      min-z: -53
+      max-x: 32
+      max-y: 35
+      max-z: 53
+    spawns:
+      spawn-a:
+        x: 0.5
+        y: 1.0
+        z: -35.5
+        yaw: 0.0
+        pitch: 0.0
+      spawn-b:
+        x: 0.5
+        y: 1.0
+        z: 35.5
+        yaw: 180.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 20.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 95
+    schematic: "glaciem.schem"
+
+  spiritual:
+    template-id: 10
+    display-name: "<gradient:#BA55D3:#4B0082>Spiritual Arena</gradient>"
+    bounds:
+      min-x: -84
+      min-y: 0
+      min-z: -84
+      max-x: 84
+      max-y: 85
+      max-z: 84
+    spawns:
+      spawn-a:
+        x: -45.5
+        y: 1.0
+        z: 0.5
+        yaw: -90.0
+        pitch: 0.0
+      spawn-b:
+        x: 45.5
+        y: 1.0
+        z: 0.5
+        yaw: 90.0
+        pitch: 0.0
+      spectator:
+        x: 0.5
+        y: 30.0
+        z: 0.5
+        yaw: 0.0
+        pitch: 45.0
+    rules:
+      allow-build: true
+      allow-block-break: true
+      min-build-y: 64
+      max-build-y: 110
+    schematic: "spiritual.schematic"
+

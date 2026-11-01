@@ -1,0 +1,110 @@
+# ==============================================================================
+#                       ApexPvP Configuration (Paper 26.3)
+# ==============================================================================
+
+storage:
+  # Supported types: SQLITE, POSTGRESQL, MARIADB, MYSQL
+  type: "SQLITE"
+  
+  sqlite:
+    file: "apex_pvp.db"
+    journal-mode: "WAL"
+    synchronous: "NORMAL"
+    busy-timeout-ms: 5000
+
+  # Settings for remote database engines (POSTGRESQL, MARIADB, MYSQL)
+  remote:
+    host: "127.0.0.1"
+    port: 3306 # 3306 for MySQL/MariaDB, 5432 for PostgreSQL
+    database: "apexpvp"
+    username: "apex_user"
+    password: "change_me"
+    ssl: false
+    # Pool Optimization Settings
+    pool:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout-ms: 10000
+      max-lifetime-ms: 1800000
+      idle-timeout-ms: 600000
+      keepalive-time-ms: 30000
+
+# Ranked Matchmaking & ELO Progression
+ranked:
+  default-elo: 800
+  k-factor: 32
+  dynamic-k-factor: true
+  economy:
+    # Requires Vault
+    enabled: true
+    entry-fee: 25.0
+    win-reward: 50.0
+    # Enable paying a rankup cost before advancing rank tiers
+    require-rankup-fee: false
+  queue:
+    initial-search-range: 50
+    range-expansion-step: 25
+    expansion-interval-seconds: 5
+
+# 1v1 Duels & Escrow
+duels:
+  request-timeout-seconds: 60
+  elo:
+    enabled: false
+  betting:
+    enabled: true
+    min-stake: 10.0
+    max-stake: 50000.0
+    server-tax-percent: 5.0 # Deducted from pot upon win
+
+# Party System
+party:
+  max-members: 16
+  allow-friendly-fire: false
+
+# Practice Bot Mode (Citizens 2 API Integration)
+practice:
+  enabled: true
+  economy:
+    enabled: true
+    charge-mode: "FLAT" # Options: FLAT, PER_MINUTE
+    flat-fee: 10.0
+    per-minute-fee: 2.0
+  reach-limit: 3.0
+  pot-threshold-hp: 8.0 # Triggers healing below 4 hearts (40% HP)
+
+# Multi-Arena Engine & Grid Instancing
+arenas:
+  world-name: "apex_arenas"
+  grid-spacing: 1000
+  rollback:
+    # Max block changes placed back per tick during match cleanup
+    blocks-per-tick: 250
+  scaling:
+    auto-scale-enabled: true
+    max-instances-per-template: 25
+    idle-cleanup-timeout-minutes: 15
+
+# Network & Proxy Integration (Velocity)
+proxy:
+  velocity-support: false
+  server-id: "pvp-node-01"
+
+# Match Lifecycles & Anti-Stall Safe Zone Mechanics
+match:
+  border:
+    enabled: true
+    shrink-delay-seconds: 180      # Shrink begins after 3 minutes (180s)
+    shrink-duration-seconds: 60   # Contracts to minimum radius over 60 seconds
+    minimum-radius: 6             # Final minimum safe circle radius in blocks
+    damage-per-second: 4.0        # 2 hearts/sec applied to players outside safe zone
+  max-match-duration-seconds: 600 # 10 minute absolute timeout against stalling
+
+# Free-For-All (FFA) Deathmatch
+ffa:
+  enabled: true
+  queue-size: 4
+  entry-fee: 10.0
+  win-reward: 40.0
+
+

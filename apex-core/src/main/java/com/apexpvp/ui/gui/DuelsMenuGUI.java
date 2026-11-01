@@ -276,7 +276,7 @@ public class DuelsMenuGUI implements Listener {
             case 13 -> {
                 // Kit Layout Editor
                 player.closeInventory();
-                plugin.getServer().dispatchCommand(player, "kiteditor");
+                plugin.getKitGUI().open(player, true);
             }
             case 14 -> {
                 // Leaderboards

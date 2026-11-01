@@ -32,7 +32,16 @@ import java.util.Objects;
 public class KitGUI implements Listener {
 
     public static final class KitGUIHolder implements InventoryHolder {
+        private final boolean editorMode;
         private Inventory inventory;
+
+        public KitGUIHolder() {
+            this(false);
+        }
+
+        public KitGUIHolder(boolean editorMode) {
+            this.editorMode = editorMode;
+        }
 
         @Override
         public @NotNull Inventory getInventory() {
@@ -41,6 +50,10 @@ public class KitGUI implements Listener {
 
         public void setInventory(Inventory inventory) {
             this.inventory = inventory;
+        }
+
+        public boolean isEditorMode() {
+            return editorMode;
         }
     }
 
@@ -53,11 +66,16 @@ public class KitGUI implements Listener {
     }
 
     public void open(@NotNull Player player) {
+        open(player, false);
+    }
+
+    public void open(@NotNull Player player, boolean editorMode) {
         Collection<Kit> allKits = plugin.getKitManager().getAllKits();
         int size = allKits.size() > 7 ? 36 : 27;
 
-        KitGUIHolder holder = new KitGUIHolder();
-        Inventory inv = Bukkit.createInventory(holder, size, TextUtil.parse("<dark_gray>Select a Combat Kit"));
+        KitGUIHolder holder = new KitGUIHolder(editorMode);
+        String title = editorMode ? "<gradient:#AA00FF:#FF55FF><bold>Select Kit to Edit Hotbar</bold></gradient>" : "<dark_gray>Select a Combat Kit";
+        Inventory inv = Bukkit.createInventory(holder, size, TextUtil.parse(title));
         holder.setInventory(inv);
 
         // Fill background with subtle dark gray stained glass panes
@@ -108,9 +126,13 @@ public class KitGUI implements Listener {
                 lore.add(TextUtil.parse("<gray>Hunger Depletion: " + hungerStatus));
 
                 lore.add(TextUtil.parse("<dark_gray>──────────────────────────────</dark_gray>"));
-                lore.add(TextUtil.parse("<gold><bold>LEFT-CLICK</bold></gold> <yellow>» Queue Ranked Match</yellow>"));
-                lore.add(TextUtil.parse("<aqua><bold>RIGHT-CLICK</bold></aqua> <yellow>» Solo Bot Practice</yellow>"));
-                lore.add(TextUtil.parse("<yellow><bold>SHIFT-CLICK</bold></yellow> <gray>» Customize Hotbar Layout</gray>"));
+                if (editorMode) {
+                    lore.add(TextUtil.parse("<gold><bold>CLICK</bold></gold> <yellow>» Open Hotbar Layout Editor</yellow>"));
+                } else {
+                    lore.add(TextUtil.parse("<gold><bold>LEFT-CLICK</bold></gold> <yellow>» Queue Ranked Match</yellow>"));
+                    lore.add(TextUtil.parse("<aqua><bold>RIGHT-CLICK</bold></aqua> <yellow>» Solo Bot Practice</yellow>"));
+                    lore.add(TextUtil.parse("<yellow><bold>SHIFT-CLICK</bold></yellow> <gray>» Customize Hotbar Layout</gray>"));
+                }
 
                 meta.lore(lore);
                 meta.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, kit.getId());
@@ -125,7 +147,7 @@ public class KitGUI implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getInventory().getHolder() instanceof KitGUIHolder) {
+        if (event.getInventory().getHolder() instanceof KitGUIHolder holder) {
             event.setCancelled(true);
 
             if (!(event.getWhoClicked() instanceof Player player)) {
@@ -152,7 +174,8 @@ public class KitGUI implements Listener {
                 return;
             }
 
-            if (event.isShiftClick() || event.getClick() == org.bukkit.event.inventory.ClickType.MIDDLE) {
+            if (holder.isEditorMode() || event.isShiftClick() || event.getClick() == org.bukkit.event.inventory.ClickType.MIDDLE) {
+                player.closeInventory();
                 plugin.getKitEditorGUI().open(player, kit);
                 return;
             }

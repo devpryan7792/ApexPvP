@@ -56,7 +56,7 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                     TextUtil.sendPrefixed(player, "<red>Kit '" + args[0] + "' not found. Opening kit selection...");
                 }
             }
-            kitGUI.open(player);
+            kitGUI.open(player, true);
             return true;
         }
 
@@ -86,7 +86,7 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 2) {
-                    kitGUI.open(player);
+                    kitGUI.open(player, true);
                     return true;
                 }
                 String id = args[1].toLowerCase();
