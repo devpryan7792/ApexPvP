@@ -377,27 +377,8 @@ public class QueueManager implements Runnable {
                 }
 
                 // Find available arena instance that supports this kit
-                ArenaTemplate template = null;
-                ArenaInstance arenaInstance = null;
-
-                for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) {
-                    if (!t.isEnabled() || !t.isModeAllowed(kitId)) continue;
-                    ArenaInstance inst = plugin.getArenaManager().getAvailableInstance(t);
-                    if (inst != null) {
-                        template = t;
-                        arenaInstance = inst;
-                        break;
-                    }
-                }
-
+                ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kitId);
                 if (arenaInstance == null) {
-                    // Signal auto-scaler to spawn a new instance for a supported template and halt queue draining for this kit
-                    for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) {
-                        if (t.isEnabled() && t.isModeAllowed(kitId)) {
-                            plugin.getArenaManager().requestScaling(t.getId());
-                            break;
-                        }
-                    }
                     break;
                 }
 
@@ -467,26 +448,8 @@ public class QueueManager implements Runnable {
                 if (kit == null) break;
 
                 // Find available arena instance that supports this kit
-                ArenaTemplate template = null;
-                ArenaInstance arenaInstance = null;
-
-                for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) {
-                    if (!t.isEnabled() || !t.isModeAllowed(kitId)) continue;
-                    ArenaInstance inst = plugin.getArenaManager().getAvailableInstance(t);
-                    if (inst != null) {
-                        template = t;
-                        arenaInstance = inst;
-                        break;
-                    }
-                }
-
+                ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kitId);
                 if (arenaInstance == null) {
-                    for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) {
-                        if (t.isEnabled() && t.isModeAllowed(kitId)) {
-                            plugin.getArenaManager().requestScaling(t.getId());
-                            break;
-                        }
-                    }
                     break;
                 }
 

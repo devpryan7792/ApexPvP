@@ -211,16 +211,15 @@ public class PartyManager {
             return false;
         }
 
-        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-        if (template == null) {
-            TextUtil.sendPrefixed(leader, "<red>No arenas are configured.");
-            return false;
-        }
-
-        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
         if (arenaInstance == null) {
-            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available. Auto-scaling instance, please try in a moment...");
-            plugin.getArenaManager().requestScaling(template.getId());
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            if (template != null) {
+                arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+            }
+        }
+        if (arenaInstance == null) {
+            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available for this kit. Auto-scaling instance, please try in a moment...");
             return false;
         }
 
@@ -279,16 +278,15 @@ public class PartyManager {
             return false;
         }
 
-        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-        if (template == null) {
-            TextUtil.sendPrefixed(leader, "<red>No arenas are configured.");
-            return false;
-        }
-
-        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
         if (arenaInstance == null) {
-            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available. Auto-scaling instance, please try in a moment...");
-            plugin.getArenaManager().requestScaling(template.getId());
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            if (template != null) {
+                arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+            }
+        }
+        if (arenaInstance == null) {
+            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available for this kit. Auto-scaling instance, please try in a moment...");
             return false;
         }
 
@@ -342,16 +340,15 @@ public class PartyManager {
             return false;
         }
 
-        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-        if (template == null) {
-            TextUtil.sendPrefixed(leader, "<red>No arenas are configured.");
-            return false;
-        }
-
-        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
         if (arenaInstance == null) {
-            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available. Auto-scaling instance, please try in a moment...");
-            plugin.getArenaManager().requestScaling(template.getId());
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            if (template != null) {
+                arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+            }
+        }
+        if (arenaInstance == null) {
+            TextUtil.sendPrefixed(leader, "<yellow>No arenas are currently available for this kit. Auto-scaling instance, please try in a moment...");
             return false;
         }
 
@@ -496,16 +493,15 @@ public class PartyManager {
             for (UUID u : targetParty.getMembers()) team1.add(targetLeader);
         }
 
-        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-        if (template == null) {
-            TextUtil.sendPrefixed(targetLeader, "<red>No arenas are configured.");
-            return false;
-        }
-
-        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(challenge.kit().getId());
         if (arenaInstance == null) {
-            TextUtil.sendPrefixed(targetLeader, "<yellow>No arenas are currently available. Auto-scaling, please try again in a moment.");
-            plugin.getArenaManager().requestScaling(template.getId());
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            if (template != null) {
+                arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+            }
+        }
+        if (arenaInstance == null) {
+            TextUtil.sendPrefixed(targetLeader, "<yellow>No arenas are currently available for this kit. Auto-scaling, please try again in a moment.");
             return false;
         }
 

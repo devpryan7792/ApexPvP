@@ -564,6 +564,24 @@ public class ArenaManager {
     }
 
     @Nullable
+    public ArenaInstance findAvailableInstanceForKit(@NotNull String kitId) {
+        for (ArenaTemplate template : templates.values()) {
+            if (!template.isEnabled() || !template.isModeAllowed(kitId)) continue;
+            ArenaInstance instance = getAvailableInstance(template);
+            if (instance != null) {
+                return instance;
+            }
+        }
+        for (ArenaTemplate template : templates.values()) {
+            if (template.isEnabled() && template.isModeAllowed(kitId)) {
+                requestScaling(template.getId());
+                break;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
     public ArenaInstance findInstanceAt(@NotNull Location location) {
         if (arenaWorld == null || !arenaWorld.equals(location.getWorld())) {
             return null;

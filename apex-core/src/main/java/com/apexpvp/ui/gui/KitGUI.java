@@ -129,9 +129,9 @@ public class KitGUI implements Listener {
                 if (editorMode) {
                     lore.add(TextUtil.parse("<gold><bold>CLICK</bold></gold> <yellow>» Open Hotbar Layout Editor</yellow>"));
                 } else {
-                    lore.add(TextUtil.parse("<gold><bold>LEFT-CLICK</bold></gold> <yellow>» Queue Ranked Match</yellow>"));
+                    lore.add(TextUtil.parse("<gold><bold>LEFT-CLICK</bold></gold> <yellow>» Customize Hotbar Layout</yellow>"));
                     lore.add(TextUtil.parse("<aqua><bold>RIGHT-CLICK</bold></aqua> <yellow>» Solo Bot Practice</yellow>"));
-                    lore.add(TextUtil.parse("<yellow><bold>SHIFT-CLICK</bold></yellow> <gray>» Customize Hotbar Layout</gray>"));
+                    lore.add(TextUtil.parse("<yellow><bold>SHIFT-CLICK</bold></yellow> <gray>» Queue Ranked Match</gray>"));
                 }
 
                 meta.lore(lore);
@@ -174,19 +174,21 @@ public class KitGUI implements Listener {
                 return;
             }
 
-            if (holder.isEditorMode() || event.isShiftClick() || event.getClick() == org.bukkit.event.inventory.ClickType.MIDDLE) {
+            if (event.isRightClick()) {
                 player.closeInventory();
-                plugin.getKitEditorGUI().open(player, kit);
+                player.performCommand("practice " + kit.getId());
                 return;
             }
 
-            player.closeInventory();
-
-            if (event.isRightClick()) {
-                player.performCommand("practice " + kit.getId());
-            } else {
+            if (event.isShiftClick()) {
+                player.closeInventory();
                 player.performCommand("queue " + kit.getId());
+                return;
             }
+
+            // Normal Left-Click (and Editor Mode): Open Kit Layout Editor directly!
+            player.closeInventory();
+            plugin.getKitEditorGUI().open(player, kit);
         }
     }
 

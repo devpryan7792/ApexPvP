@@ -157,16 +157,9 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
-        if (template == null) {
-            TextUtil.sendPrefixed(player, "<red>No arenas configured.");
-            return true;
-        }
-
-        ArenaInstance arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
+        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
         if (arenaInstance == null) {
-            TextUtil.sendPrefixed(player, "<yellow>No arenas are currently available. Auto-scaling instance, please try in a moment...");
-            plugin.getArenaManager().requestScaling(template.getId());
+            TextUtil.sendPrefixed(player, "<yellow>No arenas are currently available for this kit. Auto-scaling instance, please try in a moment...");
             return true;
         }
 
