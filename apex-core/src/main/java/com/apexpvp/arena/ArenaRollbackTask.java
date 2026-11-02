@@ -3,7 +3,9 @@ package com.apexpvp.arena;
 import org.bukkit.Bukkit;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.AreaEffectCloud;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.TNTPrimed;
@@ -86,7 +88,9 @@ public class ArenaRollbackTask implements Runnable {
                 if (entity instanceof Item ||
                     entity instanceof Projectile ||
                     entity instanceof TNTPrimed ||
-                    entity instanceof AreaEffectCloud) {
+                    entity instanceof AreaEffectCloud ||
+                    entity instanceof EnderCrystal ||
+                    entity instanceof ExperienceOrb) {
                     entity.remove();
                 }
             }

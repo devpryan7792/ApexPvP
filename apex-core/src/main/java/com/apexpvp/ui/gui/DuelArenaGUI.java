@@ -86,7 +86,10 @@ public class DuelArenaGUI implements Listener {
     }
 
     public void open(@NotNull Player challenger, @NotNull Player target, @NotNull Kit kit, double stake) {
-        Collection<ArenaTemplate> templates = plugin.getArenaManager().getAllTemplates();
+        List<ArenaTemplate> templates = plugin.getArenaManager().getAllTemplates().stream()
+                .filter(ArenaTemplate::isEnabled)
+                .filter(t -> t.isModeAllowed(kit.getId()))
+                .toList();
         int size = templates.size() > 6 ? 36 : 27;
 
         DuelArenaGUIHolder holder = new DuelArenaGUIHolder(target.getUniqueId(), target.getName(), kit.getId(), stake);
@@ -171,6 +174,9 @@ public class DuelArenaGUI implements Listener {
             case "desertdune" -> Material.CHISELED_SANDSTONE;
             case "frostpeak" -> Material.BLUE_ICE;
             case "sumo" -> Material.SLIME_BALL;
+            case "celestial" -> Material.GOLD_BLOCK;
+            case "glaciem" -> Material.PACKED_ICE;
+            case "spiritual" -> Material.AMETHYST_BLOCK;
             default -> Material.IRON_BLOCK;
         };
     }
@@ -184,6 +190,9 @@ public class DuelArenaGUI implements Listener {
             case "desertdune" -> "Arid Desert Dune";
             case "frostpeak" -> "Glacial Frost Peak";
             case "sumo" -> "Elevated Sumo Ring";
+            case "celestial" -> "Celestial Bastion";
+            case "glaciem" -> "Glaciem Arena";
+            case "spiritual" -> "Spiritual Realm";
             default -> id;
         };
     }
@@ -228,18 +237,21 @@ public class DuelArenaGUI implements Listener {
 
             ArenaTemplate template;
             if (arenaId.equals("__random__")) {
-                List<ArenaTemplate> allTemplates = new ArrayList<>(plugin.getArenaManager().getAllTemplates());
-                if (allTemplates.isEmpty()) {
+                List<ArenaTemplate> valid = plugin.getArenaManager().getAllTemplates().stream()
+                        .filter(ArenaTemplate::isEnabled)
+                        .filter(t -> t.isModeAllowed(kit.getId()))
+                        .toList();
+                if (valid.isEmpty()) {
                     challenger.closeInventory();
-                    TextUtil.sendPrefixed(challenger, "<red>No arenas are configured.");
+                    TextUtil.sendPrefixed(challenger, "<red>No arenas are configured for this kit.");
                     return;
                 }
-                template = allTemplates.get(ThreadLocalRandom.current().nextInt(allTemplates.size()));
+                template = valid.get(ThreadLocalRandom.current().nextInt(valid.size()));
             } else {
                 template = plugin.getArenaManager().getTemplate(arenaId);
-                if (template == null) {
+                if (template == null || !template.isEnabled() || !template.isModeAllowed(kit.getId())) {
                     challenger.closeInventory();
-                    TextUtil.sendPrefixed(challenger, "<red>Arena template not found.");
+                    TextUtil.sendPrefixed(challenger, "<red>Selected arena is not available for this kit.");
                     return;
                 }
             }

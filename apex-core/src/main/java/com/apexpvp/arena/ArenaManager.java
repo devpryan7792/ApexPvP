@@ -558,6 +558,22 @@ public class ArenaManager {
                 return instance;
             }
         }
+
+        // On-demand instant scaling if permitted by config
+        boolean autoScale = plugin.getConfig().getBoolean("arenas.scaling.auto-scale-enabled", true);
+        int maxPerTemplate = plugin.getConfig().getInt("arenas.scaling.max-instances-per-template", 25);
+        ArenaTemplate template = getTemplate(templateId);
+
+        if (autoScale && template != null && list.size() < maxPerTemplate) {
+            try {
+                ArenaInstance allocated = allocateDynamicInstance(template);
+                plugin.getLogger().info("On-demand scaled new ArenaInstance [" + allocated.getInstanceIdentifier() + "] at Z=" + allocated.getOriginZ());
+                return allocated;
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Failed on-demand instance scale for template " + templateId, e);
+            }
+        }
+
         // Signal scale supervisor that this template is under pressure
         requestScaling(templateId);
         return null;
