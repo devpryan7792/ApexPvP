@@ -26,19 +26,12 @@ public class VoidWorldGenerator extends ChunkGenerator {
 
     @Override
     public boolean shouldGenerateBedrock() {
-        return true;
+        return false;
     }
 
     @Override
     public void generateBedrock(@NotNull WorldInfo worldInfo, @NotNull Random random, int chunkX, int chunkZ, @NotNull ChunkData chunkData) {
-        for (int x = 0; x < 16; x++) {
-            for (int z = 0; z < 16; z++) {
-                chunkData.setBlock(x, 0, z, org.bukkit.Material.BEDROCK);
-                chunkData.setBlock(x, 1, z, org.bukkit.Material.DEEPSLATE);
-                chunkData.setBlock(x, 2, z, org.bukkit.Material.DEEPSLATE);
-                chunkData.setBlock(x, 3, z, org.bukkit.Material.SMOOTH_STONE);
-            }
-        }
+        // Pure void - zero blocks generated
     }
 
     @Override

@@ -245,6 +245,7 @@ public class ArenaManager {
                 int minBuildY = tSec.getInt("rules.min-build-y", 64);
                 int maxBuildY = tSec.getInt("rules.max-build-y", 84);
                 String schematic = tSec.getString("schematic");
+                int schematicFloorY = tSec.getInt("schematic-floor-y", 0);
 
                 boolean enabled = tSec.getBoolean("enabled", true);
                 boolean regeneration = tSec.getBoolean("regeneration", true);
@@ -254,7 +255,7 @@ public class ArenaManager {
                 ArenaTemplate template = new ArenaTemplate(
                         templateId, key, displayName, relativeBounds,
                         spawnA, spawnB, specSpawn, ffaSpawn,
-                        allowBuild, allowBreak, minBuildY, maxBuildY, schematic,
+                        allowBuild, allowBreak, minBuildY, maxBuildY, schematic, schematicFloorY,
                         enabled, regeneration, teleportToLobby, allowedModes
                 );
 
@@ -307,8 +308,9 @@ public class ArenaManager {
             if (schemFile != null && com.apexpvp.integration.worldedit.WorldEditHook.isAvailable()) {
                 int centerX = (instance.getBounds().getMinX() + instance.getBounds().getMaxX()) / 2;
                 int centerZ = (instance.getBounds().getMinZ() + instance.getBounds().getMaxZ()) / 2;
+                int floorY = instance.getTemplate().getSchematicFloorY();
                 pasted = com.apexpvp.integration.worldedit.WorldEditHook.pasteSchematic(
-                        schemFile, instance.getWorld(), centerX, instance.getOriginY(), centerZ
+                        schemFile, instance.getWorld(), centerX, instance.getOriginY(), centerZ, floorY
                 );
                 if (pasted) {
                     plugin.getLogger().info("Successfully pasted schematic [" + schemName + "] for instance " + instance.getInstanceIdentifier());

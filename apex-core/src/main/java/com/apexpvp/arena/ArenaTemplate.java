@@ -32,6 +32,7 @@ public class ArenaTemplate {
     private final int minBuildY;
     private final int maxBuildY;
     private final String schematicFile;
+    private final int schematicFloorY;
 
     private final boolean enabled;
     private final boolean regeneration;
@@ -53,7 +54,7 @@ public class ArenaTemplate {
                          @Nullable String schematicFile) {
         this(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn,
                 new SpawnPoint(0, 1, 0, 0, 0), allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile,
-                true, true, true, java.util.Collections.emptyList());
+                0, true, true, true, java.util.Collections.emptyList());
     }
 
     public ArenaTemplate(int templateId,
@@ -73,6 +74,29 @@ public class ArenaTemplate {
                          boolean regeneration,
                          boolean teleportToLobby,
                          @NotNull java.util.List<String> allowedModes) {
+        this(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn,
+                relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile,
+                0, enabled, regeneration, teleportToLobby, allowedModes);
+    }
+
+    public ArenaTemplate(int templateId,
+                         @NotNull String id,
+                         @NotNull String displayName,
+                         @NotNull ArenaBounds relativeBounds,
+                         @NotNull SpawnPoint relativeSpawnA,
+                         @NotNull SpawnPoint relativeSpawnB,
+                         @NotNull SpawnPoint relativeSpectatorSpawn,
+                         @NotNull SpawnPoint relativeFfaSpawn,
+                         boolean allowBuild,
+                         boolean allowBlockBreak,
+                         int minBuildY,
+                         int maxBuildY,
+                         @Nullable String schematicFile,
+                         int schematicFloorY,
+                         boolean enabled,
+                         boolean regeneration,
+                         boolean teleportToLobby,
+                         @NotNull java.util.List<String> allowedModes) {
         this.templateId = templateId;
         this.id = Objects.requireNonNull(id, "id cannot be null").toLowerCase();
         this.displayName = Objects.requireNonNull(displayName, "displayName cannot be null");
@@ -86,6 +110,7 @@ public class ArenaTemplate {
         this.minBuildY = minBuildY;
         this.maxBuildY = maxBuildY;
         this.schematicFile = schematicFile;
+        this.schematicFloorY = schematicFloorY;
         this.enabled = enabled;
         this.regeneration = regeneration;
         this.teleportToLobby = teleportToLobby;
@@ -147,6 +172,10 @@ public class ArenaTemplate {
         return schematicFile;
     }
 
+    public int getSchematicFloorY() {
+        return schematicFloorY;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -176,51 +205,51 @@ public class ArenaTemplate {
 
     @NotNull
     public ArenaTemplate withSpawnA(@NotNull SpawnPoint newSpawnA) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, newSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, newSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withSpawnB(@NotNull SpawnPoint newSpawnB) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, newSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, newSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withSpectatorSpawn(@NotNull SpawnPoint newSpec) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, newSpec, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, newSpec, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withFfaSpawn(@NotNull SpawnPoint newFfa) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, newFfa, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, newFfa, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withEnabled(boolean newEnabled) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, newEnabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, newEnabled, regeneration, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withRegeneration(boolean newRegen) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, newRegen, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, newRegen, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withTeleportToLobby(boolean newToLobby) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, newToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, newToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withAllowedModes(@NotNull java.util.List<String> newAllowedModes) {
-        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, newAllowedModes);
+        return new ArenaTemplate(templateId, id, displayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, newAllowedModes);
     }
 
     @NotNull
     public ArenaTemplate withDisplayName(@NotNull String newDisplayName) {
-        return new ArenaTemplate(templateId, id, newDisplayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(templateId, id, newDisplayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, allowedModes);
     }
 
     @NotNull
     public ArenaTemplate withClonedId(@NotNull String newId, @NotNull String newDisplayName, int newTemplateId) {
-        return new ArenaTemplate(newTemplateId, newId, newDisplayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, enabled, regeneration, teleportToLobby, allowedModes);
+        return new ArenaTemplate(newTemplateId, newId, newDisplayName, relativeBounds, relativeSpawnA, relativeSpawnB, relativeSpectatorSpawn, relativeFfaSpawn, allowBuild, allowBlockBreak, minBuildY, maxBuildY, schematicFile, schematicFloorY, enabled, regeneration, teleportToLobby, allowedModes);
     }
 }

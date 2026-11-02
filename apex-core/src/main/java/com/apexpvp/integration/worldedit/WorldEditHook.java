@@ -52,9 +52,15 @@ public class WorldEditHook {
     public static boolean pasteSchematic(@NotNull File file,
                                          @NotNull World world,
                                          int centerX, int originY, int centerZ) {
+        return pasteSchematic(file, world, centerX, originY, centerZ, 0);
+    }
+
+    public static boolean pasteSchematic(@NotNull File file,
+                                         @NotNull World world,
+                                         int centerX, int originY, int centerZ, int floorOffset) {
         if (!isAvailable() || !file.exists()) return false;
         try {
-            return WorldEditAdapter.pasteSchematic(file, world, centerX, originY, centerZ);
+            return WorldEditAdapter.pasteSchematic(file, world, centerX, originY, centerZ, floorOffset);
         } catch (Throwable ignored) {
             return false;
         }
@@ -118,7 +124,7 @@ public class WorldEditHook {
 
         static boolean pasteSchematic(@NotNull File file,
                                       @NotNull World world,
-                                      int centerX, int originY, int centerZ) {
+                                      int centerX, int originY, int centerZ, int floorOffset) {
             try {
                 com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat format =
                         com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats.findByFile(file);
@@ -132,11 +138,19 @@ public class WorldEditHook {
                     com.sk89q.worldedit.world.World weWorld = com.sk89q.worldedit.bukkit.BukkitAdapter.adapt(world);
                     try (com.sk89q.worldedit.EditSession editSession =
                                  com.sk89q.worldedit.WorldEdit.getInstance().newEditSession(weWorld)) {
+                        int targetMinX = centerX - clipboard.getDimensions().getX() / 2;
+                        int targetMinY = originY - floorOffset;
+                        int targetMinZ = centerZ - clipboard.getDimensions().getZ() / 2;
+
+                        int toX = targetMinX + (clipboard.getOrigin().getX() - clipboard.getMinimumPoint().getX());
+                        int toY = targetMinY + (clipboard.getOrigin().getY() - clipboard.getMinimumPoint().getY());
+                        int toZ = targetMinZ + (clipboard.getOrigin().getZ() - clipboard.getMinimumPoint().getZ());
+
                         com.sk89q.worldedit.function.operation.Operation operation =
                                 new com.sk89q.worldedit.session.ClipboardHolder(clipboard)
                                         .createPaste(editSession)
-                                        .to(com.sk89q.worldedit.math.BlockVector3.at(centerX, originY, centerZ))
-                                        .ignoreAirBlocks(true)
+                                        .to(com.sk89q.worldedit.math.BlockVector3.at(toX, toY, toZ))
+                                        .ignoreAirBlocks(false)
                                         .build();
                         com.sk89q.worldedit.function.operation.Operations.complete(operation);
                         return true;

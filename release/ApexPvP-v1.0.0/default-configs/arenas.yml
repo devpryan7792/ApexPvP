@@ -267,16 +267,16 @@ templates:
       max-z: 100
     spawns:
       spawn-a:
-        x: -40.5
+        x: 0.5
         y: 1.0
-        z: 0.5
-        yaw: -90.0
+        z: -35.5
+        yaw: 0.0
         pitch: 0.0
       spawn-b:
-        x: 40.5
+        x: 0.5
         y: 1.0
-        z: 0.5
-        yaw: 90.0
+        z: 35.5
+        yaw: 180.0
         pitch: 0.0
       spectator:
         x: 0.5
@@ -284,12 +284,19 @@ templates:
         z: 0.5
         yaw: 0.0
         pitch: 45.0
+      ffa:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+        yaw: 0.0
+        pitch: 0.0
     rules:
       allow-build: true
       allow-block-break: true
       min-build-y: 64
       max-build-y: 120
     schematic: "celestial.schem"
+    schematic-floor-y: 23
 
   glaciem:
     template-id: 9
@@ -320,12 +327,19 @@ templates:
         z: 0.5
         yaw: 0.0
         pitch: 45.0
+      ffa:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+        yaw: 0.0
+        pitch: 0.0
     rules:
       allow-build: true
       allow-block-break: true
       min-build-y: 64
       max-build-y: 95
     schematic: "glaciem.schem"
+    schematic-floor-y: 11
 
   spiritual:
     template-id: 10
@@ -356,10 +370,17 @@ templates:
         z: 0.5
         yaw: 0.0
         pitch: 45.0
+      ffa:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+        yaw: 0.0
+        pitch: 0.0
     rules:
       allow-build: true
       allow-block-break: true
       min-build-y: 64
       max-build-y: 110
     schematic: "spiritual.schematic"
+    schematic-floor-y: 17
 
