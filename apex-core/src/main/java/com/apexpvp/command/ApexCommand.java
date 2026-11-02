@@ -346,8 +346,23 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 ArenaInstance targetInst = list.get(index);
-                player.teleport(targetInst.getSpectatorSpawn());
-                TextUtil.sendPrefixed(player, "<green>Teleported to <yellow>" + targetInst.getInstanceIdentifier() + "</yellow> at Spectator Spawn.");
+                org.bukkit.Location targetLoc = targetInst.getSpawnA();
+                String pointName = "Ground (Spawn A)";
+                if (args.length >= 4) {
+                    String pt = args[args.length - 1].toLowerCase();
+                    if (pt.equals("b") || pt.equals("spawnb")) {
+                        targetLoc = targetInst.getSpawnB();
+                        pointName = "Ground (Spawn B)";
+                    } else if (pt.equals("spec") || pt.equals("spectator")) {
+                        targetLoc = targetInst.getSpectatorSpawn();
+                        pointName = "Spectator (Roof)";
+                    } else if (pt.equals("ffa") || pt.equals("center")) {
+                        targetLoc = targetInst.getFfaSpawn();
+                        pointName = "Center";
+                    }
+                }
+                player.teleport(targetLoc);
+                TextUtil.sendPrefixed(player, "<green>Teleported to <yellow>" + targetInst.getInstanceIdentifier() + "</yellow> at <aqua>" + pointName + "</aqua>.");
                 return true;
             }
             case "setspawna", "setspawnb", "setspec" -> {
@@ -425,6 +440,8 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                 List<String> tList = new ArrayList<>();
                 for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) tList.add(t.getId());
                 return tList;
+            } else if (args.length == 4 && args[1].equalsIgnoreCase("tp")) {
+                return Arrays.asList("a", "b", "spec", "ffa");
             }
         } else if (sub.equals("simduel")) {
             if (args.length == 2) {
