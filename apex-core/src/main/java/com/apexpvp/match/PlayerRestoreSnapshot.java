@@ -123,6 +123,11 @@ public class PlayerRestoreSnapshot {
         player.setGameMode(gameMode);
         player.setAllowFlight(allowFlight);
         player.setFlying(isFlying);
+        player.setInvulnerable(false);
+        try {
+            player.setWorldBorder(null);
+        } catch (Throwable ignored) {
+        }
 
         // Teleport back to original position / lobby (redirect to default world if saved location is in arena world)
         Location targetLoc = returnLocation;

@@ -14,8 +14,13 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
+import org.bukkit.WorldBorder;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
@@ -51,6 +56,8 @@ public abstract class Match {
     protected long endTime;
     private BukkitTask countdownTask;
     private BukkitTask matchTickerTask;
+    private BukkitTask celebrationTask;
+    private WorldBorder worldBorder;
     private double currentSafeRadius = -1.0;
     private boolean warningAnnounced = false;
     private boolean shrinkAnnounced = false;
@@ -129,6 +136,33 @@ public abstract class Match {
                 PlayerProfile profile = plugin.getProfileManager().getProfile(player.getUniqueId());
                 String customLayout = (profile != null) ? profile.getCustomHotbar(kit.getId()) : null;
                 kit.apply(player, customLayout);
+            }
+        }
+
+        // Initialize per-player Free Fire / Battle Royale style WorldBorder
+        boolean borderEnabled = plugin.getConfig() != null ? plugin.getConfig().getBoolean("match.border.enabled", true) : true;
+        if (borderEnabled && Bukkit.getServer() != null) {
+            try {
+                worldBorder = Bukkit.createWorldBorder();
+                int centerX = (arena.getBounds().getMinX() + arena.getBounds().getMaxX()) / 2;
+                int centerZ = (arena.getBounds().getMinZ() + arena.getBounds().getMaxZ()) / 2;
+                int width = arena.getBounds().getMaxX() - arena.getBounds().getMinX();
+                int length = arena.getBounds().getMaxZ() - arena.getBounds().getMinZ();
+                double initialDiameter = Math.max(30.0, Math.max(width, length) + 4.0);
+
+                worldBorder.setCenter(centerX, centerZ);
+                worldBorder.setSize(initialDiameter);
+                worldBorder.setDamageBuffer(0.0);
+                worldBorder.setDamageAmount(0.0);
+                worldBorder.setWarningDistance(5);
+
+                for (MatchParticipant participant : participants.values()) {
+                    Player p = Bukkit.getPlayer(participant.getUuid());
+                    if (p != null && p.isOnline()) {
+                        p.setWorldBorder(worldBorder);
+                    }
+                }
+            } catch (Throwable ignored) {
             }
         }
 
@@ -216,7 +250,7 @@ public abstract class Match {
         int shrinkDelaySec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.border.shrink-delay-seconds", 180) : 180;
         int shrinkDurationSec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.border.shrink-duration-seconds", 60) : 60;
         double minRadius = plugin.getConfig() != null ? plugin.getConfig().getDouble("match.border.minimum-radius", 6.0) : 6.0;
-        double damagePerSec = plugin.getConfig() != null ? plugin.getConfig().getDouble("match.border.damage-per-second", 4.0) : 4.0;
+        double damagePerSec = plugin.getConfig() != null ? plugin.getConfig().getDouble("match.border.damage-per-second", 2.0) : 2.0;
         int maxDurationSec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.max-match-duration-seconds", 600) : 600;
 
         int halfWidth = (arena.getBounds().getMaxX() - arena.getBounds().getMinX()) / 2;
@@ -281,6 +315,9 @@ public abstract class Match {
                             p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.6f, 1.2f);
                         }
                     }
+                    if (worldBorder != null) {
+                        worldBorder.setSize(minRadius * 2.0, java.util.concurrent.TimeUnit.SECONDS, (long) shrinkDurationSec);
+                    }
                 }
 
                 long shrinkElapsed = elapsedSec - shrinkDelaySec;
@@ -307,9 +344,11 @@ public abstract class Match {
                     double dz = p.getLocation().getZ() - centerZ;
                     double dist = Math.sqrt(dx * dx + dz * dz);
 
-                    if (dist > currentSafeRadius) {
+                    boolean outside = (worldBorder != null) ? !worldBorder.isInside(p.getLocation()) : (dist > currentSafeRadius);
+
+                    if (outside) {
                         p.damage(damagePerSec);
-                        p.sendActionBar(TextUtil.parse("<red><bold>OUTSIDE SAFE ZONE!</bold></red> <gray>(-" + (int)damagePerSec + " HP)</gray>"));
+                        p.sendActionBar(TextUtil.parse("<red><bold>⚠ OUTSIDE SAFE ZONE!</bold></red> <gray>(-1 ❤ / sec)</gray>"));
                         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.8f, 1.0f);
                     }
                 }
@@ -374,6 +413,11 @@ public abstract class Match {
         if (part == null) return;
 
         part.setAlive(false);
+        try {
+            player.setWorldBorder(null);
+            player.setInvulnerable(false);
+        } catch (Throwable ignored) {
+        }
         broadcast("<red>" + player.getName() + " disconnected and forfeited the match.");
 
         if (state.get() == MatchState.ACTIVE || state.get() == MatchState.COUNTDOWN) {
@@ -405,7 +449,7 @@ public abstract class Match {
     }
 
     /**
-     * Phase 4: ENDING (Celebrate victor, process payouts, 3-second delay)
+     * Phase 4: ENDING (Victory celebration, fireworks, cooldown countdown, process payouts)
      */
     protected void enterEnding(int winningTeamIndex) {
         MatchState current = state.get();
@@ -435,13 +479,107 @@ public abstract class Match {
             plugin.getBettingManager().onMatchEnd(this, winningTeamIndex);
         }
 
+        // Grant post-match damage immunity to all participants
+        for (MatchParticipant part : participants.values()) {
+            Player p = Bukkit.getPlayer(part.getUuid());
+            if (p != null && p.isOnline()) {
+                p.setInvulnerable(true);
+            }
+        }
+
         if (ownInventory && winningTeamIndex != -1) {
             broadcast("<gradient:#00FFAA:#00AAFF><bold>LOOTING WINDOW!</bold></gradient> <green>The winner has 15 seconds to loot dropped items before returning to lobby!</green>");
         }
 
-        // 15 seconds (300 ticks) for own inventory mode, 3 seconds (60 ticks) otherwise
-        long delay = ownInventory ? 300L : 60L;
-        Bukkit.getScheduler().runTaskLater(plugin, this::cleanup, delay);
+        boolean celebrationEnabled = plugin.getConfig() != null ? plugin.getConfig().getBoolean("match.celebration.enabled", true) : true;
+        int celebrationDurationSec = plugin.getConfig() != null ? plugin.getConfig().getInt("match.celebration.duration-seconds", 5) : 5;
+        boolean spawnFireworks = plugin.getConfig() != null ? plugin.getConfig().getBoolean("match.celebration.fireworks", true) : true;
+
+        int totalCountdownSec = ownInventory ? 15 : (celebrationEnabled ? Math.max(1, celebrationDurationSec) : 3);
+
+        celebrationTask = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            int secondsLeft = totalCountdownSec;
+
+            @Override
+            public void run() {
+                if (secondsLeft <= 0) {
+                    if (celebrationTask != null) {
+                        celebrationTask.cancel();
+                        celebrationTask = null;
+                    }
+                    cleanup();
+                    return;
+                }
+
+                for (MatchParticipant part : participants.values()) {
+                    Player p = Bukkit.getPlayer(part.getUuid());
+                    if (p == null || !p.isOnline()) continue;
+
+                    boolean isWinner = (winningTeamIndex != -1 && part.getTeamIndex() == winningTeamIndex);
+                    boolean isDraw = (winningTeamIndex == -1);
+
+                    // Show Title on first tick
+                    if (secondsLeft == totalCountdownSec) {
+                        if (isWinner) {
+                            Title winTitle = Title.title(
+                                    TextUtil.parse("<gradient:#FFD700:#FFA500><bold>VICTORY!</bold></gradient>"),
+                                    TextUtil.parse("<gray>Teleporting to lobby in <yellow>" + secondsLeft + "s</yellow>...</gray>"),
+                                    Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(200))
+                            );
+                            p.showTitle(winTitle);
+                            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                        } else if (isDraw) {
+                            Title drawTitle = Title.title(
+                                    TextUtil.parse("<yellow><bold>DRAW!</bold></yellow>"),
+                                    TextUtil.parse("<gray>Teleporting to lobby in <yellow>" + secondsLeft + "s</yellow>...</gray>"),
+                                    Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(200))
+                            );
+                            p.showTitle(drawTitle);
+                        } else {
+                            Title defeatTitle = Title.title(
+                                    TextUtil.parse("<red><bold>DEFEAT</bold></red>"),
+                                    TextUtil.parse("<gray>Teleporting to lobby in <yellow>" + secondsLeft + "s</yellow>...</gray>"),
+                                    Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(200))
+                            );
+                            p.showTitle(defeatTitle);
+                        }
+                    }
+
+                    // Action bar countdown & sound on each second
+                    if (isWinner) {
+                        p.sendActionBar(TextUtil.parse("<gold><bold>★ VICTORY CELEBRATION ★</bold></gold> <gray>• Lobby in <yellow>" + secondsLeft + "s</yellow></gray>"));
+                        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.7f, 1.2f);
+                        if (spawnFireworks) {
+                            spawnCelebrationFirework(p.getLocation());
+                        }
+                    } else {
+                        p.sendActionBar(TextUtil.parse("<gray>Match ended • Lobby in <yellow>" + secondsLeft + "s</yellow></gray>"));
+                    }
+                }
+
+                secondsLeft--;
+            }
+        }, 0L, 20L);
+    }
+
+    private void spawnCelebrationFirework(@NotNull Location loc) {
+        World world = loc.getWorld();
+        if (world == null) return;
+        try {
+            Location fwLoc = loc.clone().add((Math.random() - 0.5) * 4.0, 0.5, (Math.random() - 0.5) * 4.0);
+            Firework fw = world.spawn(fwLoc, Firework.class);
+            FireworkMeta meta = fw.getFireworkMeta();
+            meta.setPower(1);
+            meta.addEffect(FireworkEffect.builder()
+                    .with(FireworkEffect.Type.BALL_LARGE)
+                    .withColor(Color.YELLOW, Color.ORANGE, Color.AQUA, Color.LIME, Color.RED)
+                    .withFade(Color.WHITE)
+                    .flicker(true)
+                    .trail(true)
+                    .build());
+            fw.setFireworkMeta(meta);
+        } catch (Throwable ignored) {
+        }
     }
 
     /**
@@ -465,6 +603,24 @@ public abstract class Match {
             matchTickerTask = null;
         }
 
+        if (celebrationTask != null) {
+            celebrationTask.cancel();
+            celebrationTask = null;
+        }
+
+        // Reset world border and invulnerability on all participants
+        for (MatchParticipant part : participants.values()) {
+            Player p = Bukkit.getPlayer(part.getUuid());
+            if (p != null && p.isOnline()) {
+                p.setInvulnerable(false);
+                try {
+                    p.setWorldBorder(null);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        worldBorder = null;
+
         if (plugin.getBettingManager() != null) {
             plugin.getBettingManager().refundMatch(matchId);
         }
@@ -478,6 +634,11 @@ public abstract class Match {
                     p.setHealth(20.0);
                     p.setFoodLevel(20);
                     p.setFireTicks(0);
+                    p.setInvulnerable(false);
+                    try {
+                        p.setWorldBorder(null);
+                    } catch (Throwable ignored) {
+                    }
                     Location lobby = entry.getValue().getReturnLocation();
                     p.teleport(lobby);
                 } else {
@@ -562,5 +723,10 @@ public abstract class Match {
 
     public double getCurrentSafeRadius() {
         return currentSafeRadius;
+    }
+
+    @Nullable
+    public WorldBorder getWorldBorder() {
+        return worldBorder;
     }
 }

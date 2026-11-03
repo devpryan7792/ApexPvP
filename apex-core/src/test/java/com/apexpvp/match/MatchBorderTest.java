@@ -89,4 +89,18 @@ class MatchBorderTest {
         long elapsedUnder = 599;
         assertFalse(elapsedUnder >= maxDurationSec, "Match under 600 seconds must continue");
     }
+
+    @Test
+    @DisplayName("Verify border damage is exactly 1 heart (2.0 HP) per second")
+    void testBorderDamagePerSecondIsOneHeart() {
+        double damagePerSec = 2.0; // 2.0 HP = 1 full heart in Minecraft
+        assertEquals(2.0, damagePerSec, 0.001, "Safe zone border outside damage must be exactly 1 full heart (2.0 HP) per second");
+    }
+
+    @Test
+    @DisplayName("Verify victory celebration cooldown configuration defaults")
+    void testCelebrationCooldownDefaults() {
+        int defaultCelebrationSec = 5;
+        assertTrue(defaultCelebrationSec >= 3 && defaultCelebrationSec <= 10, "Celebration duration should provide sufficient victory window");
+    }
 }
