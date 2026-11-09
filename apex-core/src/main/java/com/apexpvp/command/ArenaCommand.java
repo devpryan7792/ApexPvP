@@ -248,43 +248,27 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
                 String spawnType = args[2].toLowerCase();
                 Location playerLoc = player.getLocation();
 
-                // Compute origin offset
-                int originX = template.getTemplateId() * 1000;
-                int originY = 64; // baseline Y
-                int originZ = 0;   // instance 0
-
-                // If player is inside the arena world, calculate offset relative to nearest instance
-                if (playerLoc.getWorld().equals(plugin.getArenaManager().getArenaWorld())) {
-                    ArenaInstance inside = plugin.getArenaManager().findInstanceAt(playerLoc);
-                    if (inside != null) {
-                        originX = inside.getOriginX();
-                        originY = inside.getOriginY();
-                        originZ = inside.getOriginZ();
-                    }
-                }
-
-                double relX = playerLoc.getX() - originX;
-                double relY = playerLoc.getY() - originY;
-                double relZ = playerLoc.getZ() - originZ;
-                float yaw = playerLoc.getYaw();
-                float pitch = playerLoc.getPitch();
-
-                ArenaTemplate.SpawnPoint newSpawn = new ArenaTemplate.SpawnPoint(relX, relY, relZ, yaw, pitch);
-
-                boolean updated;
-                switch (spawnType) {
-                    case "a", "spawna", "spawn-a" -> updated = plugin.getArenaManager().updateSpawnA(templateId, newSpawn);
-                    case "b", "spawnb", "spawn-b" -> updated = plugin.getArenaManager().updateSpawnB(templateId, newSpawn);
-                    case "spec", "spectator" -> updated = plugin.getArenaManager().updateSpectatorSpawn(templateId, newSpawn);
+                boolean updated = switch (spawnType) {
+                    case "a", "spawna", "spawn-a" -> plugin.getArenaManager().setSpawnA(templateId, playerLoc);
+                    case "b", "spawnb", "spawn-b" -> plugin.getArenaManager().setSpawnB(templateId, playerLoc);
+                    case "spec", "spectator" -> plugin.getArenaManager().setSpectatorSpawn(templateId, playerLoc);
+                    case "ffa", "center" -> plugin.getArenaManager().setFfaSpawn(templateId, playerLoc);
                     default -> {
-                        TextUtil.sendPrefixed(player, "<red>Invalid spawn type. Must be: a, b, or spec.");
-                        return true;
+                        TextUtil.sendPrefixed(player, "<red>Invalid spawn type. Must be: a, b, spec, or ffa.");
+                        yield false;
                     }
-                }
+                };
 
                 if (updated) {
-                    TextUtil.sendPrefixed(player, "<green>Successfully updated spawn <gold>" + spawnType + "</gold> for arena <yellow>" + template.getDisplayName() + "</yellow> at relative coordinates (" +
-                            String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                    ArenaTemplate updatedTemplate = plugin.getArenaManager().getTemplate(templateId);
+                    ArenaTemplate.SpawnPoint sp = switch (spawnType) {
+                        case "b", "spawnb", "spawn-b" -> updatedTemplate.getRelativeSpawnB();
+                        case "spec", "spectator" -> updatedTemplate.getRelativeSpectatorSpawn();
+                        case "ffa", "center" -> updatedTemplate.getRelativeFfaSpawn();
+                        default -> updatedTemplate.getRelativeSpawnA();
+                    };
+                    String coords = (sp != null) ? String.format("%.1f, %.1f, %.1f", sp.x(), sp.y(), sp.z()) : "saved";
+                    TextUtil.sendPrefixed(player, "<green>Successfully updated spawn <gold>" + spawnType + "</gold> for arena <yellow>" + template.getDisplayName() + "</yellow> at relative (" + coords + "). Changes are live!");
                 } else {
                     TextUtil.sendPrefixed(player, "<red>Failed to update spawn point.");
                 }

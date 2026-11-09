@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class ArenaInstance {
 
-    private final ArenaTemplate template;
+    private volatile ArenaTemplate template;
     private final int instanceIndex;
     private final World world;
 
@@ -22,11 +22,11 @@ public class ArenaInstance {
     private final int originY;
     private final int originZ;
 
-    private final ArenaBounds bounds;
-    private final Location spawnA;
-    private final Location spawnB;
-    private final Location spectatorSpawn;
-    private final Location ffaSpawn;
+    private volatile ArenaBounds bounds;
+    private volatile Location spawnA;
+    private volatile Location spawnB;
+    private volatile Location spectatorSpawn;
+    private volatile Location ffaSpawn;
 
     private final AtomicReference<ArenaState> state;
     private final RollbackSnapshot rollbackSnapshot;
@@ -53,9 +53,10 @@ public class ArenaInstance {
         this.spawnA = template.getRelativeSpawnA().toLocation(world, originX, originY, originZ);
         this.spawnB = template.getRelativeSpawnB().toLocation(world, originX, originY, originZ);
 
-        // Anti-collision guard: If Spawn A and Spawn B are too close (< 3 blocks), separate them across arena
-        if (this.spawnA.distanceSquared(this.spawnB) < 9.0) {
-            int halfDist = Math.max(10, (bounds.getMaxX() - bounds.getMinX()) / 3);
+        // Anti-collision guard: Only if Spawn A and Spawn B are literally identical default coordinates (< 0.25 blocks),
+        // apply safe separation. Never displace configured spawns.
+        if (this.spawnA.distanceSquared(this.spawnB) < 0.25) {
+            int halfDist = Math.max(5, (bounds.getMaxX() - bounds.getMinX()) / 4);
             this.spawnA.setX(originX - halfDist + 0.5);
             this.spawnB.setX(originX + halfDist + 0.5);
             this.spawnA.setYaw(-90.0f);
@@ -66,11 +67,27 @@ public class ArenaInstance {
         ArenaTemplate.SpawnPoint relFfa = template.getRelativeFfaSpawn();
         this.ffaSpawn = (relFfa != null)
                 ? relFfa.toLocation(world, originX, originY, originZ)
-                : new Location(world, originX + (bounds.getMaxX() - bounds.getMinX()) / 2.0, originY, originZ + (bounds.getMaxZ() - bounds.getMinZ()) / 2.0);
+                : new Location(world, originX + (bounds.getMaxX() - bounds.getMinX()) / 2.0, originY + 1.0, originZ + (bounds.getMaxZ() - bounds.getMinZ()) / 2.0);
 
         this.state = new AtomicReference<>(ArenaState.AVAILABLE);
         this.rollbackSnapshot = new RollbackSnapshot();
         this.lastUsedTimestamp = System.currentTimeMillis();
+    }
+
+    /**
+     * Dynamically hot-updates this live arena instance with the latest template configuration
+     * (spawns, bounds, rules) without requiring a server reload or restart.
+     */
+    public synchronized void applyTemplateUpdate(@NotNull ArenaTemplate updatedTemplate) {
+        this.template = Objects.requireNonNull(updatedTemplate, "template cannot be null");
+        this.bounds = updatedTemplate.getRelativeBounds().offset(originX, originY, originZ);
+        this.spawnA = updatedTemplate.getRelativeSpawnA().toLocation(world, originX, originY, originZ);
+        this.spawnB = updatedTemplate.getRelativeSpawnB().toLocation(world, originX, originY, originZ);
+        this.spectatorSpawn = updatedTemplate.getRelativeSpectatorSpawn().toLocation(world, originX, originY, originZ);
+        ArenaTemplate.SpawnPoint relFfa = updatedTemplate.getRelativeFfaSpawn();
+        this.ffaSpawn = (relFfa != null)
+                ? relFfa.toLocation(world, originX, originY, originZ)
+                : new Location(world, originX + (bounds.getMaxX() - bounds.getMinX()) / 2.0, originY + 1.0, originZ + (bounds.getMaxZ() - bounds.getMinZ()) / 2.0);
     }
 
     public boolean acquire(@NotNull Plugin plugin) {

@@ -762,12 +762,22 @@ public class ArenaManager {
         return true;
     }
 
+    public void propagateTemplateUpdate(@NotNull ArenaTemplate updated) {
+        List<ArenaInstance> list = instances.get(updated.getId().toLowerCase());
+        if (list != null) {
+            for (ArenaInstance inst : list) {
+                inst.applyTemplateUpdate(updated);
+            }
+        }
+    }
+
     public boolean updateSpawnA(@NotNull String templateId, @NotNull ArenaTemplate.SpawnPoint spawnA) {
         ArenaTemplate existing = templates.get(templateId.toLowerCase());
         if (existing == null) return false;
         ArenaTemplate updated = existing.withSpawnA(spawnA);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -777,6 +787,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withSpawnB(spawnB);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -786,13 +797,14 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withSpectatorSpawn(specSpawn);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
     /**
      * Converts a world location into arena-relative coordinates, using the live
      * instance origin when the player is inside the arena world and falling back
-     * to the template's instance-0 origin otherwise.
+     * to the nearest 1000-block grid coordinates or template's instance-0 origin otherwise.
      */
     @NotNull
     public ArenaTemplate.SpawnPoint toRelativeSpawn(@NotNull ArenaTemplate template,
@@ -807,8 +819,8 @@ public class ArenaManager {
                 originY = inside.getOriginY();
                 originZ = inside.getOriginZ();
             } else {
-                int instanceIndex = (int) Math.round(loc.getZ() / 1000.0);
-                originZ = instanceIndex * 1000;
+                originX = (int) Math.round(loc.getX() / 1000.0) * 1000;
+                originZ = (int) Math.round(loc.getZ() / 1000.0) * 1000;
             }
         }
         return new ArenaTemplate.SpawnPoint(
@@ -914,6 +926,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withEnabled(enabled);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -958,6 +971,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withIconMaterial(iconMaterial);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -967,6 +981,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withRegeneration(regen);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -976,6 +991,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withTeleportToLobby(toLobby);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -985,6 +1001,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withAllowedModes(modes);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -994,6 +1011,7 @@ public class ArenaManager {
         ArenaTemplate updated = existing.withFfaSpawn(ffaSpawn);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
+        propagateTemplateUpdate(updated);
         return true;
     }
 
@@ -1045,9 +1063,13 @@ public class ArenaManager {
             return true;
         });
         for (ArenaTemplate template : templates.values()) {
-            instances.computeIfAbsent(template.getId(), k -> new CopyOnWriteArrayList<>());
-            if (instances.get(template.getId()).isEmpty()) {
+            List<ArenaInstance> list = instances.computeIfAbsent(template.getId(), k -> new CopyOnWriteArrayList<>());
+            if (list.isEmpty()) {
                 allocateInitialInstance(template);
+            } else {
+                for (ArenaInstance inst : list) {
+                    inst.applyTemplateUpdate(template);
+                }
             }
         }
         plugin.getLogger().info("Reloaded arena templates. Active templates: " + templates.size());

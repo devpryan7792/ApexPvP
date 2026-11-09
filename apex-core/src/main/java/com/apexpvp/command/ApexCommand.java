@@ -374,7 +374,7 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                 TextUtil.sendPrefixed(player, "<green>Teleported to <yellow>" + targetInst.getInstanceIdentifier() + "</yellow> at <aqua>" + pointName + "</aqua>.");
                 return true;
             }
-            case "setspawna", "setspawnb", "setspec" -> {
+            case "setspawna", "setspawnb", "setspec", "setffa" -> {
                 if (!(sender instanceof Player player)) {
                     sender.sendMessage(TextUtil.parse("<red>Only players can set spawn locations."));
                     return true;
@@ -401,13 +401,16 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
 
                 if (action.equals("setspawna")) {
                     plugin.getArenaManager().updateSpawnA(id, sp);
-                    TextUtil.sendPrefixed(player, "<green>Spawn A updated for <yellow>" + id + "</yellow> at relative (" + relative + ").");
+                    TextUtil.sendPrefixed(player, "<green>Spawn A updated for <yellow>" + id + "</yellow> at relative (" + relative + "). Changes are live!");
                 } else if (action.equals("setspawnb")) {
                     plugin.getArenaManager().updateSpawnB(id, sp);
-                    TextUtil.sendPrefixed(player, "<green>Spawn B updated for <yellow>" + id + "</yellow> at relative (" + relative + ").");
+                    TextUtil.sendPrefixed(player, "<green>Spawn B updated for <yellow>" + id + "</yellow> at relative (" + relative + "). Changes are live!");
+                } else if (action.equals("setffa")) {
+                    plugin.getArenaManager().setFfaSpawn(id, sp);
+                    TextUtil.sendPrefixed(player, "<green>FFA spawn updated for <yellow>" + id + "</yellow> at relative (" + relative + "). Changes are live!");
                 } else {
                     plugin.getArenaManager().updateSpectatorSpawn(id, sp);
-                    TextUtil.sendPrefixed(player, "<green>Spectator spawn updated for <yellow>" + id + "</yellow> at relative (" + relative + ").");
+                    TextUtil.sendPrefixed(player, "<green>Spectator spawn updated for <yellow>" + id + "</yellow> at relative (" + relative + "). Changes are live!");
                 }
                 return true;
             }

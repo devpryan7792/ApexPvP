@@ -31,6 +31,14 @@ public final class SafeSpawnFinder {
         int blockZ = target.getBlockZ();
 
         try {
+            int cx = blockX >> 4;
+            int cz = blockZ >> 4;
+            if (!world.isChunkLoaded(cx, cz)) {
+                world.getChunkAt(cx, cz);
+            }
+        } catch (Throwable ignored) {}
+
+        try {
             // Direct mock/air safety guard: If world doesn't return blocks, don't scan
             Block testBlock = world.getBlockAt(blockX, blockY, blockZ);
             if (testBlock == null) {
@@ -43,11 +51,11 @@ public final class SafeSpawnFinder {
             Block head = world.getBlockAt(blockX, blockY + 1, blockZ);
 
             if (isSolid(ground) && isPassable(feet) && isPassable(head)) {
-                return new Location(world, blockX + 0.5, blockY, blockZ + 0.5, target.getYaw(), target.getPitch());
+                return new Location(world, blockX + 0.5, target.getY(), blockZ + 0.5, target.getYaw(), target.getPitch());
             }
 
-            // 2. Scan downwards (up to 8 blocks down) for floor
-            for (int dy = 0; dy >= -8; dy--) {
+            // 2. Scan downwards (up to 16 blocks down) for floor
+            for (int dy = -1; dy >= -16; dy--) {
                 Block g = world.getBlockAt(blockX, blockY + dy - 1, blockZ);
                 Block f = world.getBlockAt(blockX, blockY + dy, blockZ);
                 Block h = world.getBlockAt(blockX, blockY + dy + 1, blockZ);
@@ -56,8 +64,8 @@ public final class SafeSpawnFinder {
                 }
             }
 
-            // 3. Scan upwards (up to 8 blocks up) in case spawn point was set inside foundation blocks
-            for (int dy = 1; dy <= 8; dy++) {
+            // 3. Scan upwards (up to 16 blocks up) in case spawn point was set inside foundation blocks
+            for (int dy = 1; dy <= 16; dy++) {
                 Block g = world.getBlockAt(blockX, blockY + dy - 1, blockZ);
                 Block f = world.getBlockAt(blockX, blockY + dy, blockZ);
                 Block h = world.getBlockAt(blockX, blockY + dy + 1, blockZ);
