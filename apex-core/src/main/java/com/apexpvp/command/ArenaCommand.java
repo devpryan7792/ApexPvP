@@ -6,11 +6,13 @@ import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.arena.ArenaTemplate;
 import com.apexpvp.util.TextUtil;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,6 +53,9 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             sender.sendMessage(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>ApexPvP Arena Management</bold></gradient>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena list</yellow> <gray>- View all configured templates & instances</gray>"));
+            sender.sendMessage(TextUtil.parse("<yellow>/arena toggle <template></yellow> <gray>- Toggle arena enabled/maintenance mode</gray>"));
+            sender.sendMessage(TextUtil.parse("<yellow>/arena prebuilt [enable|disable|toggle|status]</yellow> <gray>- Toggle prebuilt arenas</gray>"));
+            sender.sendMessage(TextUtil.parse("<yellow>/arena seticon <template> [material]</yellow> <gray>- Set unique map icon (uses held item if omitted)</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena create <id> [displayName] [radius]</yellow> <gray>- Create arena from WorldEdit selection</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena import <file> <id> [displayName]</yellow> <gray>- Import map from maps/ folder</gray>"));
             sender.sendMessage(TextUtil.parse("<yellow>/arena tp <template></yellow> <gray>- Teleport into arena platform</gray>"));
@@ -160,9 +165,19 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
 
                 boolean created = plugin.getArenaManager().createTemplate(id, displayName, bounds, spawnA, spawnB, spec);
                 if (created) {
-                    TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>ARENA CREATED!</bold></gradient> Arena <gold>" + displayName +
-                            "</gold> (<yellow>" + id + "</yellow>) is now registered!\n" +
-                            "<gray>Next step: Set your spawns with <yellow>/arena setspawn " + id + " <a|b|spec></yellow>.");
+                    ItemStack hand = (player.getInventory() != null) ? player.getInventory().getItemInMainHand() : null;
+                    if (hand != null && !hand.getType().isAir()) {
+                        plugin.getArenaManager().setArenaIcon(id, hand.getType().name());
+                        TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>ARENA CREATED!</bold></gradient> Arena <gold>" + displayName +
+                                "</gold> (<yellow>" + id + "</yellow>) is now registered!\n" +
+                                "<green>Map Icon automatically set to held item: <aqua>" + hand.getType().name() + "</aqua>!</green>\n" +
+                                "<gray>Next step: Set your spawns with <yellow>/arena setspawn " + id + " <a|b|spec></yellow>.");
+                    } else {
+                        TextUtil.sendPrefixed(player, "<gradient:#00FFAA:#00AAFF><bold>ARENA CREATED!</bold></gradient> Arena <gold>" + displayName +
+                                "</gold> (<yellow>" + id + "</yellow>) is now registered!\n" +
+                                "<yellow>Notice: No item held in hand. Default map icon assigned. You can customize the map icon in <gold>/apex editor</gold> or hold an item and type <gold>/arena seticon " + id + "</gold>!</yellow>\n" +
+                                "<gray>Next step: Set your spawns with <yellow>/arena setspawn " + id + " <a|b|spec></yellow>.");
+                    }
                 } else {
                     TextUtil.sendPrefixed(player, "<red>Failed to create arena template.");
                 }
@@ -282,6 +297,87 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            case "toggle" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(TextUtil.parse("<red>Usage: /arena toggle <template>"));
+                    return true;
+                }
+                String templateId = args[1].toLowerCase();
+                ArenaTemplate template = plugin.getArenaManager().getTemplate(templateId);
+                if (template == null) {
+                    sender.sendMessage(TextUtil.parse("<red>Arena template '<yellow>" + args[1] + "</yellow>' not found."));
+                    return true;
+                }
+                boolean newState = plugin.getArenaManager().toggleArenaEnabled(templateId);
+                sender.sendMessage(TextUtil.parse(newState
+                        ? "<green>Arena <gold>" + template.getDisplayName() + "</gold> (<yellow>" + templateId + "</yellow>) is now <bold>ENABLED</bold>."
+                        : "<yellow>Arena <gold>" + template.getDisplayName() + "</gold> (<yellow>" + templateId + "</yellow>) is now in <bold>MAINTENANCE (DISABLED)</bold>."));
+                return true;
+            }
+
+            case "prebuilt", "toggleprebuilt" -> {
+                String action = (args.length >= 2) ? args[1].toLowerCase() : "toggle";
+                switch (action) {
+                    case "enable", "on", "true" -> {
+                        int count = plugin.getArenaManager().setPrebuiltArenasEnabled(true);
+                        sender.sendMessage(TextUtil.parse("<green>All <gold>" + count + "</gold> prebuilt plugin arenas have been <bold>ENABLED</bold>."));
+                    }
+                    case "disable", "off", "false" -> {
+                        int count = plugin.getArenaManager().setPrebuiltArenasEnabled(false);
+                        sender.sendMessage(TextUtil.parse("<yellow>All <gold>" + count + "</gold> prebuilt plugin arenas have been <bold>DISABLED (MAINTENANCE)</bold>."));
+                    }
+                    case "status" -> {
+                        boolean any = plugin.getArenaManager().arePrebuiltArenasEnabled();
+                        sender.sendMessage(TextUtil.parse("<gray>Prebuilt Arenas Status: " + (any ? "<green><bold>ENABLED</bold></green>" : "<red><bold>DISABLED</bold></red>")));
+                    }
+                    case "toggle" -> {
+                        boolean newState = plugin.getArenaManager().togglePrebuiltArenas();
+                        sender.sendMessage(TextUtil.parse(newState
+                                ? "<green>All prebuilt plugin arenas are now <bold>ENABLED</bold>."
+                                : "<yellow>All prebuilt plugin arenas are now <bold>DISABLED (MAINTENANCE)</bold>."));
+                    }
+                    default -> sender.sendMessage(TextUtil.parse("<red>Usage: /arena prebuilt [enable|disable|toggle|status]"));
+                }
+                return true;
+            }
+
+            case "seticon" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(TextUtil.parse("<red>Usage: /arena seticon <template> [material]"));
+                    return true;
+                }
+                String templateId = args[1].toLowerCase();
+                ArenaTemplate template = plugin.getArenaManager().getTemplate(templateId);
+                if (template == null) {
+                    sender.sendMessage(TextUtil.parse("<red>Arena template '<yellow>" + args[1] + "</yellow>' not found."));
+                    return true;
+                }
+
+                org.bukkit.Material mat = null;
+                if (args.length >= 3) {
+                    mat = org.bukkit.Material.matchMaterial(args[2].toUpperCase());
+                    if (mat == null) {
+                        sender.sendMessage(TextUtil.parse("<red>Invalid material: " + args[2]));
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    ItemStack hand = player.getInventory().getItemInMainHand();
+                    if (hand.getType() != org.bukkit.Material.AIR) {
+                        mat = hand.getType();
+                    } else {
+                        sender.sendMessage(TextUtil.parse("<red>Please hold an item in your hand or specify a material: /arena seticon " + templateId + " <material>"));
+                        return true;
+                    }
+                } else {
+                    sender.sendMessage(TextUtil.parse("<red>Console must specify a material name: /arena seticon " + templateId + " <material>"));
+                    return true;
+                }
+
+                plugin.getArenaManager().setArenaIcon(templateId, mat.name());
+                sender.sendMessage(TextUtil.parse("<green>Set map icon for arena <gold>" + template.getDisplayName() + "</gold> to <yellow>" + mat.name() + "</yellow>!"));
+                return true;
+            }
+
             default -> {
                 sender.sendMessage(TextUtil.parse("<red>Unknown subcommand. Use /arena for help."));
                 return true;
@@ -305,10 +401,22 @@ public class ArenaCommand implements CommandExecutor, TabCompleter {
             completions.add("import");
             completions.add("tp");
             completions.add("setspawn");
+            completions.add("toggle");
+            completions.add("prebuilt");
+            completions.add("seticon");
             completions.add("reload");
-        } else if (args.length == 2 && (args[0].equalsIgnoreCase("tp") || args[0].equalsIgnoreCase("setspawn"))) {
+        } else if (args.length == 2 && (args[0].equalsIgnoreCase("tp") || args[0].equalsIgnoreCase("setspawn") || args[0].equalsIgnoreCase("toggle") || args[0].equalsIgnoreCase("seticon"))) {
             for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) {
                 completions.add(t.getId());
+            }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("prebuilt")) {
+            completions.add("enable");
+            completions.add("disable");
+            completions.add("toggle");
+            completions.add("status");
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("seticon")) {
+            for (Material m : Material.values()) {
+                if (m.isItem() && !m.isAir()) completions.add(m.name().toLowerCase());
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("import")) {
             completions.addAll(plugin.getArenaManager().getAvailableSchematicFiles());

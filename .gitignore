@@ -16,3 +16,7 @@ build/
 # Local drops / temporary zips
 pvp/
 pvp.zip
+apex2/
+*.zip
+.DS_Store
+*.DS_Store

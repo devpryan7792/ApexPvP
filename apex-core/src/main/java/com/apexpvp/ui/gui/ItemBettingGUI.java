@@ -285,14 +285,15 @@ public class ItemBettingGUI implements Listener {
 
         holder.setConfirmed(true);
 
-        // Collect wagered items
-        List<ItemStack> wagerPot = new ArrayList<>();
+        // Collect wagered items per side so an abort cannot cross-refund items.
+        List<ItemStack> challengerPot = new ArrayList<>();
+        List<ItemStack> challengedPot = new ArrayList<>();
         Inventory inv = holder.getInventory();
 
         for (int s : CHALLENGER_SLOTS) {
             ItemStack item = inv.getItem(s);
             if (item != null && item.getType() != Material.AIR) {
-                wagerPot.add(item.clone());
+                challengerPot.add(item.clone());
                 inv.setItem(s, null);
             }
         }
@@ -300,10 +301,12 @@ public class ItemBettingGUI implements Listener {
         for (int s : CHALLENGED_SLOTS) {
             ItemStack item = inv.getItem(s);
             if (item != null && item.getType() != Material.AIR) {
-                wagerPot.add(item.clone());
+                challengedPot.add(item.clone());
                 inv.setItem(s, null);
             }
         }
+
+        int totalPotItems = challengerPot.size() + challengedPot.size();
 
         holder.getChallenger().closeInventory();
         holder.getChallenged().closeInventory();
@@ -313,16 +316,16 @@ public class ItemBettingGUI implements Listener {
         if (instance == null) {
             TextUtil.sendPrefixed(holder.getChallenger(), "<red>No arena instances available. Wager cancelled.");
             TextUtil.sendPrefixed(holder.getChallenged(), "<red>No arena instances available. Wager cancelled.");
-            refundPot(holder.getChallenger(), holder.getChallenged(), wagerPot);
+            refundPot(holder.getChallenger(), holder.getChallenged(), challengerPot, challengedPot);
             return;
         }
 
-        DuelMatch match = new DuelMatch(plugin, instance, holder.getKit(), holder.getChallenger(), holder.getChallenged(), 0.0, wagerPot, false);
+        DuelMatch match = new DuelMatch(plugin, instance, holder.getKit(), holder.getChallenger(), holder.getChallenged(), 0.0, challengerPot, challengedPot, false);
         plugin.getMatchManager().registerMatch(match);
         match.start();
 
-        TextUtil.sendPrefixed(holder.getChallenger(), "<gradient:#00FFAA:#00AAFF><bold>DUEL STARTED!</bold></gradient> <green>Wager pot of " + wagerPot.size() + " items is locked in escrow!</green>");
-        TextUtil.sendPrefixed(holder.getChallenged(), "<gradient:#00FFAA:#00AAFF><bold>DUEL STARTED!</bold></gradient> <green>Wager pot of " + wagerPot.size() + " items is locked in escrow!</green>");
+        TextUtil.sendPrefixed(holder.getChallenger(), "<gradient:#00FFAA:#00AAFF><bold>DUEL STARTED!</bold></gradient> <green>Wager pot of " + totalPotItems + " items is locked in escrow!</green>");
+        TextUtil.sendPrefixed(holder.getChallenged(), "<gradient:#00FFAA:#00AAFF><bold>DUEL STARTED!</bold></gradient> <green>Wager pot of " + totalPotItems + " items is locked in escrow!</green>");
     }
 
     @EventHandler
@@ -376,9 +379,15 @@ public class ItemBettingGUI implements Listener {
         }
     }
 
-    private void refundPot(@NotNull Player p1, @NotNull Player p2, @NotNull List<ItemStack> pot) {
-        for (ItemStack item : pot) {
-            returnItemToPlayer(p1, item);
+    private void refundPot(@NotNull Player challenger,
+                           @NotNull Player challenged,
+                           @NotNull List<ItemStack> challengerItems,
+                           @NotNull List<ItemStack> challengedItems) {
+        for (ItemStack item : challengerItems) {
+            returnItemToPlayer(challenger, item);
+        }
+        for (ItemStack item : challengedItems) {
+            returnItemToPlayer(challenged, item);
         }
     }
 

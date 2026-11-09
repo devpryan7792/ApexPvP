@@ -195,15 +195,15 @@ public class DuelsMenuGUI implements Listener {
         }
         inv.setItem(22, privacyItem);
 
-        // Slot 26: Party Hub (Beacon)
+        // Slot 26: Team Hub (Beacon)
         ItemStack partyItem = new ItemStack(Material.BEACON);
         ItemMeta partyMeta = partyItem.getItemMeta();
         if (partyMeta != null) {
-            partyMeta.displayName(TextUtil.parse("<gradient:#55FFFF:#00AAAA><bold>Party Management</bold></gradient>"));
+            partyMeta.displayName(TextUtil.parse("<gradient:#55FFFF:#00AAAA><bold>Team Management</bold></gradient>"));
             List<Component> lore = new ArrayList<>();
-            lore.add(TextUtil.parse("<gray>Create or manage your team party.</gray>"));
+            lore.add(TextUtil.parse("<gray>Create or manage your competitive team.</gray>"));
             lore.add(Component.empty());
-            lore.add(TextUtil.parse("<yellow>▶ Click to open Party Menu</yellow>"));
+            lore.add(TextUtil.parse("<yellow>▶ Click to open Team Menu</yellow>"));
             partyMeta.lore(lore);
             partyItem.setItemMeta(partyMeta);
         }

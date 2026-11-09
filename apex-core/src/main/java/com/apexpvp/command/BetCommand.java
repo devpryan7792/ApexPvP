@@ -42,6 +42,10 @@ public class BetCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (!CommandPermissions.require(player, "apexpvp.bet")) {
+            return true;
+        }
+
         if (args.length < 2) {
             TextUtil.sendPrefixed(player, "<yellow>Usage: /bet <player> <amount>");
             return true;

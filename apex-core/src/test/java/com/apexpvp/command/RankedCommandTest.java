@@ -48,6 +48,7 @@ public class RankedCommandTest {
         player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         when(player.getName()).thenReturn("TestPlayer");
+        when(player.hasPermission("apexpvp.queue")).thenReturn(true);
         mockCmd = mock(Command.class);
     }
 

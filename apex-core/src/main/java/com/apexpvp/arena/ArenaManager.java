@@ -16,7 +16,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -34,6 +33,12 @@ import java.util.logging.Level;
  * dynamic auto-scaling, and lifecycle state transitions.
  */
 public class ArenaManager {
+
+    private static final Set<String> LEGACY_PREBUILT_IDS = Set.of("celestial", "glaciem", "spiritual");
+
+    static boolean isLegacyPrebuilt(@NotNull String id) {
+        return LEGACY_PREBUILT_IDS.contains(id.toLowerCase());
+    }
 
     private final JavaPlugin plugin;
     private final String arenaWorldName;
@@ -151,25 +156,7 @@ public class ArenaManager {
             } catch (Exception ignored) {}
         }
 
-        String[] defaultSchems = {"celestial.schem", "glaciem.schem", "spiritual.schematic"};
-        for (String schem : defaultSchems) {
-            File targetMaps = new File(mapsFolder, schem);
-            if (!targetMaps.exists()) {
-                try (InputStream in = plugin.getResource("schematics/" + schem)) {
-                    if (in != null) {
-                        java.nio.file.Files.copy(in, targetMaps.toPath());
-                    }
-                } catch (Exception ignored) {}
-            }
-            File targetSchems = new File(schematicsFolder, schem);
-            if (!targetSchems.exists()) {
-                try (InputStream in = plugin.getResource("schematics/" + schem)) {
-                    if (in != null) {
-                        java.nio.file.Files.copy(in, targetSchems.toPath());
-                    }
-                } catch (Exception ignored) {}
-            }
-        }
+        // Bundled schematics are no longer shipped; custom maps are uploaded by the admin.
     }
 
     @NotNull
@@ -217,11 +204,21 @@ public class ArenaManager {
             return;
         }
 
+        // A reload must reflect the file exactly; otherwise deleted templates linger.
+        templates.clear();
+
+        // These pre-made arenas were removed from the shipped configuration. Strip them from
+        // existing installs so servers upgrading in place also drop the templates.
+        List<String> removedLegacy = new ArrayList<>();
         for (String key : section.getKeys(false)) {
             ConfigurationSection tSec = section.getConfigurationSection(key);
             if (tSec == null) continue;
 
             try {
+                if (isLegacyPrebuilt(key)) {
+                    removedLegacy.add(key);
+                    continue;
+                }
                 int templateId = tSec.getInt("template-id");
                 String displayName = tSec.getString("display-name", key);
 
@@ -251,18 +248,36 @@ public class ArenaManager {
                 boolean regeneration = tSec.getBoolean("regeneration", true);
                 boolean teleportToLobby = tSec.getBoolean("teleport-to-lobby", true);
                 List<String> allowedModes = tSec.getStringList("allowed-modes");
+                boolean isPrebuiltDefault = java.util.Set.of(
+                        "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak", "sumo"
+                ).contains(key.toLowerCase());
+                boolean prebuilt = tSec.getBoolean("prebuilt", isPrebuiltDefault);
+                String iconMaterial = tSec.getString("icon");
 
                 ArenaTemplate template = new ArenaTemplate(
                         templateId, key, displayName, relativeBounds,
                         spawnA, spawnB, specSpawn, ffaSpawn,
                         allowBuild, allowBreak, minBuildY, maxBuildY, schematic, schematicFloorY,
-                        enabled, regeneration, teleportToLobby, allowedModes
+                        enabled, regeneration, teleportToLobby, allowedModes, prebuilt, iconMaterial
                 );
 
                 templates.put(key.toLowerCase(), template);
                 instances.put(key.toLowerCase(), new CopyOnWriteArrayList<>());
             } catch (Exception e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to load arena template: " + key, e);
+            }
+        }
+
+        if (!removedLegacy.isEmpty()) {
+            for (String key : removedLegacy) {
+                config.set("templates." + key, null);
+                instances.remove(key.toLowerCase());
+            }
+            try {
+                config.save(arenasFile);
+                plugin.getLogger().info("Removed legacy pre-made arenas: " + String.join(", ", removedLegacy));
+            } catch (Exception e) {
+                plugin.getLogger().warning("Could not persist removal of legacy arenas: " + e.getMessage());
             }
         }
     }
@@ -292,12 +307,24 @@ public class ArenaManager {
     @NotNull
     public ArenaInstance allocateDynamicInstance(@NotNull ArenaTemplate template) {
         List<ArenaInstance> list = instances.get(template.getId());
-        int nextIndex = list.size();
+        int nextIndex = computeNextInstanceIndex(list);
         ArenaInstance dynamicInstance = new ArenaInstance(template, nextIndex, arenaWorld, baselineY, true);
         dynamicInstance.addChunkTickets(plugin);
         buildArenaPlatform(dynamicInstance);
         list.add(dynamicInstance);
         return dynamicInstance;
+    }
+
+    /**
+     * Allocates a fresh index above every index still present in the list.
+     * Using {@code list.size()} would reuse the Z origin of a removed instance and can spawn a
+     * second match on top of a live one.
+     */
+    static int computeNextInstanceIndex(@NotNull List<ArenaInstance> instances) {
+        return instances.stream()
+                .mapToInt(ArenaInstance::getInstanceIndex)
+                .max()
+                .orElse(0) + 1;
     }
 
     public void buildArenaPlatform(@NotNull ArenaInstance instance) {
@@ -552,6 +579,11 @@ public class ArenaManager {
 
     @Nullable
     public ArenaInstance getAvailableInstance(@NotNull String templateId) {
+        ArenaTemplate template = getTemplate(templateId);
+        if (template == null || !template.isEnabled()) {
+            return null;
+        }
+
         List<ArenaInstance> list = instances.get(templateId.toLowerCase());
         if (list == null) return null;
 
@@ -564,7 +596,6 @@ public class ArenaManager {
         // On-demand instant scaling if permitted by config
         boolean autoScale = plugin.getConfig().getBoolean("arenas.scaling.auto-scale-enabled", true);
         int maxPerTemplate = plugin.getConfig().getInt("arenas.scaling.max-instances-per-template", 25);
-        ArenaTemplate template = getTemplate(templateId);
 
         if (autoScale && template != null && list.size() < maxPerTemplate) {
             try {
@@ -583,20 +614,37 @@ public class ArenaManager {
 
     @Nullable
     public ArenaInstance findAvailableInstanceForKit(@NotNull String kitId) {
-        for (ArenaTemplate template : templates.values()) {
-            if (!template.isEnabled() || !template.isModeAllowed(kitId)) continue;
+        List<ArenaTemplate> eligible = eligibleTemplatesForKit(templates.values(), kitId);
+        if (eligible.isEmpty()) {
+            return null;
+        }
+
+        for (ArenaTemplate template : eligible) {
             ArenaInstance instance = getAvailableInstance(template);
             if (instance != null) {
                 return instance;
             }
         }
-        for (ArenaTemplate template : templates.values()) {
-            if (template.isEnabled() && template.isModeAllowed(kitId)) {
-                requestScaling(template.getId());
-                break;
-            }
+        for (ArenaTemplate template : eligible) {
+            requestScaling(template.getId());
         }
         return null;
+    }
+
+    /**
+     * Returns the templates that can host the given kit in a random order. Randomising here is
+     * what gives every arena a chance instead of always picking the first map (Colosseum).
+     */
+    @NotNull
+    static List<ArenaTemplate> eligibleTemplatesForKit(@NotNull Collection<ArenaTemplate> all, @NotNull String kitId) {
+        List<ArenaTemplate> eligible = new ArrayList<>();
+        for (ArenaTemplate template : all) {
+            if (template.isEnabled() && template.isModeAllowed(kitId)) {
+                eligible.add(template);
+            }
+        }
+        Collections.shuffle(eligible, java.util.concurrent.ThreadLocalRandom.current());
+        return eligible;
     }
 
     @Nullable
@@ -741,11 +789,16 @@ public class ArenaManager {
         return true;
     }
 
-    public boolean setSpawnA(@NotNull String templateId, @NotNull Location loc) {
-        ArenaTemplate template = getTemplate(templateId);
-        if (template == null) return false;
+    /**
+     * Converts a world location into arena-relative coordinates, using the live
+     * instance origin when the player is inside the arena world and falling back
+     * to the template's instance-0 origin otherwise.
+     */
+    @NotNull
+    public ArenaTemplate.SpawnPoint toRelativeSpawn(@NotNull ArenaTemplate template,
+                                                    @NotNull Location loc) {
         int originX = template.getTemplateId() * 1000;
-        int originY = 64;
+        int originY = baselineY;
         int originZ = 0;
         if (arenaWorld != null && loc.getWorld() != null && loc.getWorld().equals(arenaWorld)) {
             ArenaInstance inside = findInstanceAt(loc);
@@ -753,49 +806,38 @@ public class ArenaManager {
                 originX = inside.getOriginX();
                 originY = inside.getOriginY();
                 originZ = inside.getOriginZ();
+            } else {
+                int instanceIndex = (int) Math.round(loc.getZ() / 1000.0);
+                originZ = instanceIndex * 1000;
             }
         }
-        return updateSpawnA(templateId, new ArenaTemplate.SpawnPoint(
+        return new ArenaTemplate.SpawnPoint(
                 loc.getX() - originX, loc.getY() - originY, loc.getZ() - originZ,
-                loc.getYaw(), loc.getPitch()));
+                loc.getYaw(), loc.getPitch());
+    }
+
+    public boolean setSpawnA(@NotNull String templateId, @NotNull Location loc) {
+        ArenaTemplate template = getTemplate(templateId);
+        if (template == null) return false;
+        return updateSpawnA(templateId, toRelativeSpawn(template, loc));
     }
 
     public boolean setSpawnB(@NotNull String templateId, @NotNull Location loc) {
         ArenaTemplate template = getTemplate(templateId);
         if (template == null) return false;
-        int originX = template.getTemplateId() * 1000;
-        int originY = 64;
-        int originZ = 0;
-        if (arenaWorld != null && loc.getWorld() != null && loc.getWorld().equals(arenaWorld)) {
-            ArenaInstance inside = findInstanceAt(loc);
-            if (inside != null) {
-                originX = inside.getOriginX();
-                originY = inside.getOriginY();
-                originZ = inside.getOriginZ();
-            }
-        }
-        return updateSpawnB(templateId, new ArenaTemplate.SpawnPoint(
-                loc.getX() - originX, loc.getY() - originY, loc.getZ() - originZ,
-                loc.getYaw(), loc.getPitch()));
+        return updateSpawnB(templateId, toRelativeSpawn(template, loc));
     }
 
     public boolean setSpectatorSpawn(@NotNull String templateId, @NotNull Location loc) {
         ArenaTemplate template = getTemplate(templateId);
         if (template == null) return false;
-        int originX = template.getTemplateId() * 1000;
-        int originY = 64;
-        int originZ = 0;
-        if (arenaWorld != null && loc.getWorld() != null && loc.getWorld().equals(arenaWorld)) {
-            ArenaInstance inside = findInstanceAt(loc);
-            if (inside != null) {
-                originX = inside.getOriginX();
-                originY = inside.getOriginY();
-                originZ = inside.getOriginZ();
-            }
-        }
-        return updateSpectatorSpawn(templateId, new ArenaTemplate.SpawnPoint(
-                loc.getX() - originX, loc.getY() - originY, loc.getZ() - originZ,
-                loc.getYaw(), loc.getPitch()));
+        return updateSpectatorSpawn(templateId, toRelativeSpawn(template, loc));
+    }
+
+    public boolean setFfaSpawn(@NotNull String templateId, @NotNull Location loc) {
+        ArenaTemplate template = getTemplate(templateId);
+        if (template == null) return false;
+        return setFfaSpawn(templateId, toRelativeSpawn(template, loc));
     }
 
     public void saveTemplateToConfig(@NotNull ArenaTemplate template) {
@@ -843,6 +885,10 @@ public class ArenaManager {
         config.set(path + ".spawns.ffa.pitch", ffa.pitch());
 
         config.set(path + ".enabled", template.isEnabled());
+        config.set(path + ".prebuilt", template.isPrebuilt());
+        if (template.getIconMaterial() != null) {
+            config.set(path + ".icon", template.getIconMaterial());
+        }
         config.set(path + ".regeneration", template.isRegeneration());
         config.set(path + ".teleport-to-lobby", template.isTeleportToLobby());
         config.set(path + ".allowed-modes", template.getAllowedModes());
@@ -866,6 +912,50 @@ public class ArenaManager {
         ArenaTemplate existing = templates.get(templateId.toLowerCase());
         if (existing == null) return false;
         ArenaTemplate updated = existing.withEnabled(enabled);
+        templates.put(templateId.toLowerCase(), updated);
+        saveTemplateToConfig(updated);
+        return true;
+    }
+
+    public boolean toggleArenaEnabled(@NotNull String templateId) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        boolean next = !existing.isEnabled();
+        setArenaEnabled(templateId, next);
+        return next;
+    }
+
+    public int setPrebuiltArenasEnabled(boolean enabled) {
+        int count = 0;
+        for (ArenaTemplate template : templates.values()) {
+            if (template.isPrebuilt()) {
+                setArenaEnabled(template.getId(), enabled);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public boolean arePrebuiltArenasEnabled() {
+        for (ArenaTemplate template : templates.values()) {
+            if (template.isPrebuilt() && template.isEnabled()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean togglePrebuiltArenas() {
+        boolean anyEnabled = arePrebuiltArenasEnabled();
+        boolean nextState = !anyEnabled;
+        setPrebuiltArenasEnabled(nextState);
+        return nextState;
+    }
+
+    public boolean setArenaIcon(@NotNull String templateId, @Nullable String iconMaterial) {
+        ArenaTemplate existing = templates.get(templateId.toLowerCase());
+        if (existing == null) return false;
+        ArenaTemplate updated = existing.withIconMaterial(iconMaterial);
         templates.put(templateId.toLowerCase(), updated);
         saveTemplateToConfig(updated);
         return true;
@@ -944,6 +1034,16 @@ public class ArenaManager {
 
     public void reloadTemplates() {
         loadTemplates();
+        // Drop instance pools for templates that no longer exist in arenas.yml.
+        instances.entrySet().removeIf(entry -> {
+            if (templates.containsKey(entry.getKey())) {
+                return false;
+            }
+            for (ArenaInstance instance : entry.getValue()) {
+                instance.removeChunkTickets(plugin);
+            }
+            return true;
+        });
         for (ArenaTemplate template : templates.values()) {
             instances.computeIfAbsent(template.getId(), k -> new CopyOnWriteArrayList<>());
             if (instances.get(template.getId()).isEmpty()) {

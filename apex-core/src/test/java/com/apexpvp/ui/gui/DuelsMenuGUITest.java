@@ -45,6 +45,7 @@ public class DuelsMenuGUITest {
         when(player.getUniqueId()).thenReturn(uuid);
         when(player.getName()).thenReturn("TestHero");
         when(player.getLocation()).thenReturn(mock(org.bukkit.Location.class));
+        when(player.hasPermission("apexpvp.duel")).thenReturn(true);
 
         profile = new PlayerProfile(uuid, "TestHero", Rank.IRON_1, 1150, 250.0);
         when(profileManager.getProfile(uuid)).thenReturn(profile);

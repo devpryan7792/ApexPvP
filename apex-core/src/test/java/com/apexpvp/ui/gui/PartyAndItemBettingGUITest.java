@@ -5,7 +5,7 @@ import com.apexpvp.arena.ArenaBounds;
 import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.arena.ArenaManager;
 import com.apexpvp.arena.ArenaTemplate;
-import com.apexpvp.command.PartyCommand;
+import com.apexpvp.command.TeamCommand;
 import com.apexpvp.kit.Kit;
 import com.apexpvp.kit.KitRules;
 import com.apexpvp.match.MatchManager;
@@ -68,6 +68,7 @@ public class PartyAndItemBettingGUITest {
         when(player1.getUniqueId()).thenReturn(u1);
         when(player1.getName()).thenReturn("ChallengerHero");
         when(player1.getInventory()).thenReturn(mock(PlayerInventory.class));
+        when(player1.hasPermission("apexpvp.team")).thenReturn(true);
 
         player2 = mock(Player.class);
         UUID u2 = UUID.randomUUID();
@@ -82,7 +83,7 @@ public class PartyAndItemBettingGUITest {
         PartyGUI mockGUI = mock(PartyGUI.class);
         when(plugin.getPartyGUI()).thenReturn(mockGUI);
 
-        PartyCommand cmd = new PartyCommand(plugin);
+        TeamCommand cmd = new TeamCommand(plugin);
         Command mockCmd = mock(Command.class);
 
         assertTrue(cmd.onCommand(player1, mockCmd, "party", new String[0]));
@@ -168,6 +169,56 @@ public class PartyAndItemBettingGUITest {
 
         verify(player1.getInventory()).addItem(wagerSword);
         verify(inv).setItem(10, null);
+    }
+
+    @Test
+    @DisplayName("Verify abort refund returns each side's items to its owner")
+    void testItemBettingAbortRefundOwnership() {
+        Kit kit = mock(Kit.class);
+        ArenaTemplate template = mock(ArenaTemplate.class);
+        ItemBettingGUI.ItemBettingHolder holder = new ItemBettingGUI.ItemBettingHolder(player1, player2, kit, template);
+
+        Inventory inv = mock(Inventory.class);
+        when(inv.getHolder()).thenReturn(holder);
+        holder.setInventory(inv);
+
+        ItemStack challengerSword = new ItemStack(Material.DIAMOND_SWORD);
+        ItemStack challengedApple = new ItemStack(Material.GOLDEN_APPLE, 8);
+        when(inv.getItem(10)).thenReturn(challengerSword);
+        when(inv.getItem(14)).thenReturn(challengedApple);
+
+        PlayerInventory inv1 = mock(PlayerInventory.class);
+        PlayerInventory inv2 = mock(PlayerInventory.class);
+        when(player1.getInventory()).thenReturn(inv1);
+        when(player2.getInventory()).thenReturn(inv2);
+        when(inv1.addItem(any(ItemStack.class))).thenReturn(new HashMap<>());
+        when(inv2.addItem(any(ItemStack.class))).thenReturn(new HashMap<>());
+
+        // No arena available -> the abort/refund path runs.
+        when(arenaManager.getAvailableInstance(template)).thenReturn(null);
+
+        InventoryClickEvent challengerReady = mock(InventoryClickEvent.class);
+        when(challengerReady.getInventory()).thenReturn(inv);
+        when(challengerReady.getWhoClicked()).thenReturn(player1);
+        when(challengerReady.getRawSlot()).thenReturn(ItemBettingGUI.CHALLENGER_READY_SLOT);
+        itemBettingGUI.onInventoryClick(challengerReady);
+
+        InventoryClickEvent challengedReady = mock(InventoryClickEvent.class);
+        when(challengedReady.getInventory()).thenReturn(inv);
+        when(challengedReady.getWhoClicked()).thenReturn(player2);
+        when(challengedReady.getRawSlot()).thenReturn(ItemBettingGUI.CHALLENGED_READY_SLOT);
+        itemBettingGUI.onInventoryClick(challengedReady);
+
+        // addItem is varargs; Mockito expands a single-element call, so the
+        // matcher must be typed as one ItemStack rather than ItemStack[].
+        verify(inv1, times(1)).addItem(org.mockito.ArgumentMatchers.<ItemStack>argThat(
+                item -> item != null && item.getType() == Material.DIAMOND_SWORD));
+        verify(inv1, never()).addItem(org.mockito.ArgumentMatchers.<ItemStack>argThat(
+                item -> item != null && item.getType() == Material.GOLDEN_APPLE));
+        verify(inv2, times(1)).addItem(org.mockito.ArgumentMatchers.<ItemStack>argThat(
+                item -> item != null && item.getType() == Material.GOLDEN_APPLE));
+        verify(inv2, never()).addItem(org.mockito.ArgumentMatchers.<ItemStack>argThat(
+                item -> item != null && item.getType() == Material.DIAMOND_SWORD));
     }
 
     @Test

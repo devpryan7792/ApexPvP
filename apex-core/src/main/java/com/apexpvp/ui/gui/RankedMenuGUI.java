@@ -239,22 +239,22 @@ public class RankedMenuGUI implements Listener {
                 Party party = plugin.getPartyManager().getParty(player);
                 if (party == null) {
                     player.closeInventory();
-                    TextUtil.sendPrefixed(player, "<red>You need to be in a party to play Team Ranked! Create one with <yellow>/party create</yellow>.");
+                    TextUtil.sendPrefixed(player, "<red>You need to be in a team to play Team Ranked! Create one with <yellow>/team create</yellow>.");
                     return;
                 }
                 if (!party.isLeader(player.getUniqueId())) {
                     player.closeInventory();
-                    TextUtil.sendPrefixed(player, "<red>Only the party leader can queue for Team Ranked!");
+                    TextUtil.sendPrefixed(player, "<red>Only the team leader can queue for Team Ranked!");
                     return;
                 }
                 if (party.getSize() < 2) {
                     player.closeInventory();
-                    TextUtil.sendPrefixed(player, "<red>Team Ranked matchmaking requires at least 2 party members (min 2v2)!");
+                    TextUtil.sendPrefixed(player, "<red>Team Ranked matchmaking requires at least 2 team members (min 2v2)!");
                     return;
                 }
                 if (party.getSize() > 4) {
                     player.closeInventory();
-                    TextUtil.sendPrefixed(player, "<red>Team Ranked matchmaking supports up to 4 members (max 4v4)! Your party has " + party.getSize() + " members. For 4v4 internal party scrimmages, use <yellow>/party split</yellow>.");
+                    TextUtil.sendPrefixed(player, "<red>Team Ranked matchmaking supports up to 4 members (max 4v4)! Your team has " + party.getSize() + " members. For internal scrimmages, use <yellow>/team split</yellow>.");
                     return;
                 }
                 openKitSelector(player, true);

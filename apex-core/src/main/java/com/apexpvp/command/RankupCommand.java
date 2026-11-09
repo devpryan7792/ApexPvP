@@ -34,6 +34,10 @@ public class RankupCommand implements CommandExecutor {
             return true;
         }
 
+        if (!CommandPermissions.require(player, "apexpvp.rankup")) {
+            return true;
+        }
+
         PlayerProfile profile = plugin.getProfileManager().getProfile(player.getUniqueId());
         if (profile == null) {
             TextUtil.sendPrefixed(player, "<red>Profile data not loaded.");

@@ -77,6 +77,7 @@ public class AutoRankupTest {
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(uuid);
         when(player.isOnline()).thenReturn(true);
+        when(player.hasPermission("apexpvp.rankup")).thenReturn(true);
 
         profileManager.registerProfile(profile);
 
@@ -99,6 +100,7 @@ public class AutoRankupTest {
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(uuid);
         when(player.isOnline()).thenReturn(true);
+        when(player.hasPermission("apexpvp.rankup")).thenReturn(true);
         when(player.getLocation()).thenReturn(mock(org.bukkit.Location.class));
 
         profileManager.registerProfile(profile);

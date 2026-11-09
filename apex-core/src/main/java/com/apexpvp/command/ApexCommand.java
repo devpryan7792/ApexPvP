@@ -16,6 +16,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -78,8 +79,8 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(TextUtil.parse("<red>You do not have permission to run this command."));
                     return true;
                 }
-                plugin.reloadConfig();
-                TextUtil.sendPrefixed(sender, "<green>ApexPvP configuration reloaded successfully.");
+                plugin.reloadAllConfigs();
+                TextUtil.sendPrefixed(sender, "<green>ApexPvP reloaded: config, messages, kits, arenas, queue tuning, and caches.");
                 return true;
             }
             default -> {
@@ -295,7 +296,15 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
 
                 boolean created = plugin.getArenaManager().createTemplate(id, displayName, bounds, spawnA, spawnB, spec);
                 if (created) {
-                    TextUtil.sendPrefixed(sender, "<green>Created arena template <yellow>" + id + "</yellow> with default grid platform!");
+                    ItemStack hand = (sender instanceof Player p && p.getInventory() != null) ? p.getInventory().getItemInMainHand() : null;
+                    if (hand != null && !hand.getType().isAir()) {
+                        String matName = hand.getType().name();
+                        plugin.getArenaManager().setArenaIcon(id, matName);
+                        TextUtil.sendPrefixed(sender, "<green>Created arena template <yellow>" + id + "</yellow>! (Map Icon automatically set to held item: <aqua>" + matName + "</aqua>)</green>");
+                    } else {
+                        TextUtil.sendPrefixed(sender, "<green>Created arena template <yellow>" + id + "</yellow> with default grid platform!\n" +
+                                "<yellow>Tip: No item held in hand. You can customize the map icon in <gold>/apex editor</gold> or with <gold>/apex arena seticon " + id + "</gold>!</yellow>");
+                    }
                 } else {
                     TextUtil.sendPrefixed(sender, "<red>Arena template '" + id + "' already exists!");
                 }
@@ -382,24 +391,58 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
                 }
 
                 org.bukkit.Location loc = player.getLocation();
-                int originX = template.getTemplateId() * 1000;
-                int originY = 64;
-                int originZ = 0;
-                double relX = loc.getX() - originX;
-                double relY = loc.getY() - originY;
-                double relZ = loc.getZ() - originZ;
-                ArenaTemplate.SpawnPoint sp = new ArenaTemplate.SpawnPoint(relX, relY, relZ, loc.getYaw(), loc.getPitch());
+                // Share the manager's coordinate math so the visual editor and the
+                // command path always agree, including non-zero Z origins.
+                ArenaTemplate.SpawnPoint sp = plugin.getArenaManager().toRelativeSpawn(template, loc);
+                double relX = sp.x();
+                double relY = sp.y();
+                double relZ = sp.z();
+                String relative = String.format("%.1f, %.1f, %.1f", relX, relY, relZ);
 
                 if (action.equals("setspawna")) {
                     plugin.getArenaManager().updateSpawnA(id, sp);
-                    TextUtil.sendPrefixed(player, "<green>Spawn A updated for <yellow>" + id + "</yellow> at relative (" + String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                    TextUtil.sendPrefixed(player, "<green>Spawn A updated for <yellow>" + id + "</yellow> at relative (" + relative + ").");
                 } else if (action.equals("setspawnb")) {
                     plugin.getArenaManager().updateSpawnB(id, sp);
-                    TextUtil.sendPrefixed(player, "<green>Spawn B updated for <yellow>" + id + "</yellow> at relative (" + String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                    TextUtil.sendPrefixed(player, "<green>Spawn B updated for <yellow>" + id + "</yellow> at relative (" + relative + ").");
                 } else {
                     plugin.getArenaManager().updateSpectatorSpawn(id, sp);
-                    TextUtil.sendPrefixed(player, "<green>Spectator spawn updated for <yellow>" + id + "</yellow> at relative (" + String.format("%.1f, %.1f, %.1f", relX, relY, relZ) + ").");
+                    TextUtil.sendPrefixed(player, "<green>Spectator spawn updated for <yellow>" + id + "</yellow> at relative (" + relative + ").");
                 }
+                return true;
+            }
+            case "seticon" -> {
+                if (args.length < 3) {
+                    TextUtil.sendPrefixed(sender, "<red>Usage: /apex arena seticon <templateId> [material]");
+                    return true;
+                }
+                String id = args[2].toLowerCase();
+                ArenaTemplate template = plugin.getArenaManager().getTemplate(id);
+                if (template == null) {
+                    TextUtil.sendPrefixed(sender, "<red>Unknown arena template: " + id);
+                    return true;
+                }
+                org.bukkit.Material mat = null;
+                if (args.length >= 4) {
+                    mat = org.bukkit.Material.matchMaterial(args[3].toUpperCase());
+                    if (mat == null) {
+                        TextUtil.sendPrefixed(sender, "<red>Invalid material: " + args[3]);
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    ItemStack hand = player.getInventory().getItemInMainHand();
+                    if (!hand.getType().isAir()) {
+                        mat = hand.getType();
+                    } else {
+                        TextUtil.sendPrefixed(sender, "<red>Hold an item in your main hand or specify material: /apex arena seticon " + id + " <material>");
+                        return true;
+                    }
+                } else {
+                    TextUtil.sendPrefixed(sender, "<red>Console must specify material: /apex arena seticon " + id + " <material>");
+                    return true;
+                }
+                plugin.getArenaManager().setArenaIcon(id, mat.name());
+                TextUtil.sendPrefixed(sender, "<green>Set map icon for arena <gold>" + template.getDisplayName() + "</gold> to <aqua>" + mat.name() + "</aqua>!");
                 return true;
             }
             default -> {
@@ -412,7 +455,7 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(TextUtil.parse("<dark_gray>----------------- <gradient:#00FFAA:#00AAFF><bold>APEXPVP COMMANDS</bold></gradient> <dark_gray>-----------------"));
         sender.sendMessage(TextUtil.parse("<gold>/apex editor <gray>- Open the Visual In-Game Admin Editor GUI"));
-        sender.sendMessage(TextUtil.parse("<gold>/apex arena <list|create|dupe|tp|setspawnA|setspawnB|setspec> <gray>- Arena grid manager"));
+        sender.sendMessage(TextUtil.parse("<gold>/apex arena <list|create|dupe|tp|setspawnA|setspawnB|setspec|seticon> <gray>- Arena grid manager"));
         sender.sendMessage(TextUtil.parse("<gold>/apex simduel <kit> [difficulty] [stake] <gray>- Solo 2-player combat simulation"));
         sender.sendMessage(TextUtil.parse("<gold>/apex eco <give|take|set> <player> <amount> <gray>- Administrative economy management"));
         sender.sendMessage(TextUtil.parse("<gold>/apex reload <gray>- Reload configuration files"));
@@ -435,7 +478,7 @@ public class ApexCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase();
         if (sub.equals("arena")) {
             if (args.length == 2) {
-                return Arrays.asList("list", "create", "dupe", "tp", "setspawnA", "setspawnB", "setspec");
+                return Arrays.asList("list", "create", "dupe", "tp", "setspawnA", "setspawnB", "setspec", "seticon");
             } else if (args.length == 3) {
                 List<String> tList = new ArrayList<>();
                 for (ArenaTemplate t : plugin.getArenaManager().getAllTemplates()) tList.add(t.getId());

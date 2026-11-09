@@ -141,16 +141,25 @@ public class DuelPreviewGUI implements Listener {
         inv.setItem(11, kitCard);
 
         // 2. Arena Showcase Card (Slot 13)
-        Material arenaMat = switch (template.getId().toLowerCase()) {
-            case "colosseum" -> Material.STONE_BRICKS;
-            case "temple" -> Material.QUARTZ_PILLAR;
-            case "netherforge" -> Material.POLISHED_BLACKSTONE_BRICKS;
-            case "cybervoid" -> Material.CRYING_OBSIDIAN;
-            case "desertdune" -> Material.CHISELED_SANDSTONE;
-            case "frostpeak" -> Material.BLUE_ICE;
-            case "sumo" -> Material.SLIME_BALL;
-            default -> Material.IRON_BLOCK;
-        };
+        Material arenaMat = null;
+        if (template.getIconMaterial() != null) {
+            arenaMat = Material.matchMaterial(template.getIconMaterial());
+        }
+        if (arenaMat == null) {
+            arenaMat = switch (template.getId().toLowerCase()) {
+                case "colosseum" -> Material.CRACKED_STONE_BRICKS;
+                case "temple" -> Material.QUARTZ_PILLAR;
+                case "netherforge" -> Material.POLISHED_BLACKSTONE_BRICKS;
+                case "cybervoid" -> Material.CRYING_OBSIDIAN;
+                case "desertdune" -> Material.SMOOTH_SANDSTONE;
+                case "frostpeak" -> Material.BLUE_ICE;
+                case "sumo" -> Material.SLIME_BLOCK;
+                case "celestial" -> Material.GOLD_BLOCK;
+                case "glaciem" -> Material.PACKED_ICE;
+                case "spiritual" -> Material.AMETHYST_BLOCK;
+                default -> Material.STONE_BRICKS;
+            };
+        }
         ItemStack arenaCard = new ItemStack(arenaMat);
         ItemMeta arenaMeta = arenaCard.getItemMeta();
         if (arenaMeta != null) {

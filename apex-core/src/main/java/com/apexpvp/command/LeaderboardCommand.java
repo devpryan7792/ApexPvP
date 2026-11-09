@@ -35,6 +35,10 @@ public class LeaderboardCommand implements CommandExecutor, TabCompleter {
                              @NotNull Command command,
                              @NotNull String label,
                              @NotNull String[] args) {
+        if (!CommandPermissions.require(sender, "apexpvp.top")) {
+            return true;
+        }
+
         String category = (args.length > 0) ? args[0].toLowerCase() : "elo";
 
         LeaderboardManager lm = plugin.getLeaderboardManager();

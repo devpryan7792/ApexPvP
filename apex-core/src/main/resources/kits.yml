@@ -1,5 +1,5 @@
 # ==============================================================================
-#                        ApexPvP Kits Configuration
+#                        ApexPvP Kits Configuration (2026 Era)
 # ==============================================================================
 
 kits:
@@ -56,6 +56,135 @@ kits:
       34: "SPLASH_POTION:1:POTION=STRONG_HEALING"
       35: "SPLASH_POTION:1:POTION=STRONG_HEALING"
 
+  crystal:
+    display-name: "<gradient:#FF00AA:#AA00FF>Crystal PvP</gradient>"
+    icon: "END_CRYSTAL"
+    rules:
+      allow-build: true
+      allow-hunger: true
+      combo-mode: false
+      sumo-mode: false
+    armor:
+      helmet: "NETHERITE_HELMET:1:ENCHANTS=protection=4,unbreaking=3,mending=1"
+      chestplate: "NETHERITE_CHESTPLATE:1:ENCHANTS=protection=4,unbreaking=3,mending=1"
+      leggings: "NETHERITE_LEGGINGS:1:ENCHANTS=protection=4,unbreaking=3,mending=1"
+      boots: "NETHERITE_BOOTS:1:ENCHANTS=protection=4,unbreaking=3,feather_falling=4,mending=1"
+    offhand: "TOTEM_OF_UNDYING"
+    main-items:
+      0: "NETHERITE_SWORD:1:ENCHANTS=sharpness=5,unbreaking=3"
+      1: "RESPAWN_ANCHOR:64"
+      2: "GLOWSTONE:64"
+      3: "OBSIDIAN:64"
+      4: "END_CRYSTAL:64"
+      5: "TOTEM_OF_UNDYING:1"
+      6: "TOTEM_OF_UNDYING:1"
+      7: "ENDER_PEARL:16"
+      8: "GOLDEN_APPLE:64"
+      9: "CROSSBOW:1:ENCHANTS=quick_charge=3,unbreaking=3"
+      10: "ARROW:64"
+      11: "NETHERITE_PICKAXE:1:ENCHANTS=efficiency=5,unbreaking=3"
+      12: "TOTEM_OF_UNDYING:1"
+      13: "TOTEM_OF_UNDYING:1"
+      14: "TOTEM_OF_UNDYING:1"
+      15: "TOTEM_OF_UNDYING:1"
+      16: "TOTEM_OF_UNDYING:1"
+      17: "TOTEM_OF_UNDYING:1"
+      18: "TOTEM_OF_UNDYING:1"
+      19: "POTION:1:POTION=STRONG_SWIFTNESS"
+      20: "POTION:1:POTION=STRONG_STRENGTH"
+      21: "EXPERIENCE_BOTTLE:64"
+      22: "ENDER_PEARL:16"
+      23: "END_CRYSTAL:64"
+      24: "OBSIDIAN:64"
+      25: "RESPAWN_ANCHOR:64"
+      26: "GLOWSTONE:64"
+      27: "TOTEM_OF_UNDYING:1"
+      28: "TOTEM_OF_UNDYING:1"
+      29: "TOTEM_OF_UNDYING:1"
+      30: "TOTEM_OF_UNDYING:1"
+      31: "TOTEM_OF_UNDYING:1"
+      32: "TOTEM_OF_UNDYING:1"
+      33: "TOTEM_OF_UNDYING:1"
+      34: "TOTEM_OF_UNDYING:1"
+      35: "TOTEM_OF_UNDYING:1"
+
+  mace:
+    display-name: "<gradient:#00FFAA:#00AAFF>Mace PvP</gradient>"
+    icon: "MACE"
+    rules:
+      allow-build: false
+      allow-hunger: true
+      combo-mode: false
+      sumo-mode: false
+    armor:
+      helmet: "NETHERITE_HELMET:1:ENCHANTS=protection=4,unbreaking=3"
+      chestplate: "NETHERITE_CHESTPLATE:1:ENCHANTS=protection=4,unbreaking=3"
+      leggings: "NETHERITE_LEGGINGS:1:ENCHANTS=protection=4,unbreaking=3"
+      boots: "NETHERITE_BOOTS:1:ENCHANTS=protection=4,unbreaking=3,feather_falling=4"
+    offhand: "TOTEM_OF_UNDYING"
+    main-items:
+      0: "MACE:1:ENCHANTS=sharpness=5,unbreaking=3"
+      1: "WIND_CHARGE:64"
+      2: "ENDER_PEARL:16"
+      3: "ENCHANTED_GOLDEN_APPLE:16"
+      4: "POTION:1:POTION=STRONG_SWIFTNESS"
+      5: "POTION:1:POTION=STRONG_STRENGTH"
+      6: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      7: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      8: "COOKED_BEEF:64"
+      9: "NETHERITE_SWORD:1:ENCHANTS=sharpness=5,unbreaking=3"
+      10: "WIND_CHARGE:64"
+      11: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      12: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      13: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      14: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      15: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      16: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      17: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      18: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      19: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      20: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      21: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      22: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      23: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      24: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      25: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      26: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      27: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      28: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      29: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      30: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      31: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      32: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      33: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      34: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+      35: "SPLASH_POTION:1:POTION=STRONG_HEALING"
+
+  smp:
+    display-name: "<gradient:#00AA00:#55FF55>SMP Shield</gradient>"
+    icon: "SHIELD"
+    rules:
+      allow-build: false
+      allow-hunger: true
+      combo-mode: false
+      sumo-mode: false
+    armor:
+      helmet: "DIAMOND_HELMET:1:ENCHANTS=protection=4,unbreaking=3"
+      chestplate: "DIAMOND_CHESTPLATE:1:ENCHANTS=protection=4,unbreaking=3"
+      leggings: "DIAMOND_LEGGINGS:1:ENCHANTS=protection=4,unbreaking=3"
+      boots: "DIAMOND_BOOTS:1:ENCHANTS=protection=4,unbreaking=3,feather_falling=4"
+    offhand: "SHIELD:1:ENCHANTS=unbreaking=3"
+    main-items:
+      0: "DIAMOND_AXE:1:ENCHANTS=sharpness=5,unbreaking=3"
+      1: "DIAMOND_SWORD:1:ENCHANTS=sharpness=5,unbreaking=3"
+      2: "CROSSBOW:1:ENCHANTS=quick_charge=3,unbreaking=3"
+      3: "ARROW:64"
+      4: "GOLDEN_APPLE:16"
+      5: "ENDER_PEARL:16"
+      6: "COOKED_BEEF:64"
+      7: "POTION:1:POTION=STRONG_SWIFTNESS"
+      8: "POTION:1:POTION=LONG_FIRE_RESISTANCE"
+
   gapple:
     display-name: "<gradient:#FFAA00:#FFFF55>Gapple</gradient>"
     icon: "ENCHANTED_GOLDEN_APPLE"
@@ -81,6 +210,24 @@ kits:
       7: "DIAMOND_LEGGINGS:1:ENCHANTS=protection=4,unbreaking=3"
       8: "DIAMOND_BOOTS:1:ENCHANTS=protection=4,unbreaking=3,feather_falling=4"
       9: "ENCHANTED_GOLDEN_APPLE:64"
+
+  boxing:
+    display-name: "<gradient:#FF5555:#FF55FF>Boxing</gradient>"
+    icon: "LEATHER_CHESTPLATE"
+    rules:
+      allow-build: false
+      allow-hunger: false
+      combo-mode: false
+      sumo-mode: false
+    armor:
+      helmet: ""
+      chestplate: ""
+      leggings: ""
+      boots: ""
+    offhand: ""
+    main-items:
+      0: "DIAMOND_SWORD:1:ENCHANTS=unbreaking=3"
+      1: "POTION:1:POTION=STRONG_SWIFTNESS"
 
   combo:
     display-name: "<gradient:#00FFAA:#00AAFF>Combo</gradient>"
@@ -200,7 +347,7 @@ kits:
       35: "SPLASH_POTION:1:POTION=STRONG_HEALING"
 
   custom:
-    display-name: "<gradient:#55FFFF:#00AAFF>Custom</gradient>"
+    display-name: "<gradient:#55FFFF:#00AAFF>Netherite Pot</gradient>"
     icon: "NETHERITE_SWORD"
     rules:
       allow-build: false
@@ -252,7 +399,7 @@ kits:
       35: "SPLASH_POTION:1:POTION=STRONG_HEALING"
 
   spear:
-    display-name: "<gradient:#00FFAA:#00AAFF>Spear PvP</gradient>"
+    display-name: "<gradient:#00FFAA:#00AAFF>Trident PvP</gradient>"
     icon: "NETHERITE_SPEAR"
     rules:
       allow-build: false
@@ -266,7 +413,7 @@ kits:
       boots: "NETHERITE_BOOTS:1:ENCHANTS=protection=4,unbreaking=3,feather_falling=4,mending=1"
     offhand: "TOTEM_OF_UNDYING"
     main-items:
-      0: "NETHERITE_SPEAR:1:ENCHANTS=lunge=3,sharpness=5,unbreaking=3,mending=1"
+      0: "NETHERITE_SPEAR:1:ENCHANTS=unbreaking=3,sharpness=5,looting=3"
       1: "GOLDEN_APPLE:3"
       2: "ENDER_PEARL:16"
       3: "POTION:1:POTION=STRONG_SWIFTNESS"
@@ -359,4 +506,3 @@ kits:
       33: "MUSHROOM_STEW:1"
       34: "MUSHROOM_STEW:1"
       35: "MUSHROOM_STEW:1"
-

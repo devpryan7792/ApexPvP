@@ -3,6 +3,7 @@ package com.apexpvp.command;
 import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.kit.Kit;
 import com.apexpvp.kit.KitManager;
+import com.apexpvp.party.Party;
 import com.apexpvp.party.PartyManager;
 import com.apexpvp.queue.QueueManager;
 import org.bukkit.command.Command;
@@ -48,6 +49,7 @@ public class FfaCommandTest {
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         when(player.getName()).thenReturn("TestFighter");
         when(player.isOnline()).thenReturn(true);
+        when(player.hasPermission("apexpvp.ffa")).thenReturn(true);
 
         ffaCommand = new FfaCommand(plugin);
     }
@@ -72,6 +74,41 @@ public class FfaCommandTest {
         boolean result = ffaCommand.onCommand(player, command, "ffa", new String[]{"leave"});
         assertTrue(result);
         verify(queueManager, times(1)).leaveFfaQueue(player);
+    }
+
+    @Test
+    @DisplayName("/ffa with no args never starts a party FFA match")
+    void testFfaNoArgsDoesNotAutoStart() {
+        Party party = mock(Party.class);
+        Kit kit = mock(Kit.class);
+        when(party.isLeader(player.getUniqueId())).thenReturn(true);
+        when(party.getSize()).thenReturn(3);
+        when(partyManager.getParty(player)).thenReturn(party);
+        when(kitManager.getAllKits()).thenReturn(List.of(kit));
+
+        boolean result = ffaCommand.onCommand(player, command, "ffa", new String[0]);
+
+        assertTrue(result);
+        verify(partyManager, never()).startPartyFfa(any(), any());
+    }
+
+    @Test
+    @DisplayName("/ffa <kit> queues instead of starting a party FFA match")
+    void testFfaDirectKitQueues() {
+        Kit kit = mock(Kit.class);
+        when(kit.getId()).thenReturn("spear");
+        when(kitManager.getKit("spear")).thenReturn(kit);
+
+        Party party = mock(Party.class);
+        when(party.isLeader(player.getUniqueId())).thenReturn(true);
+        when(party.getSize()).thenReturn(3);
+        when(partyManager.getParty(player)).thenReturn(party);
+
+        boolean result = ffaCommand.onCommand(player, command, "ffa", new String[]{"spear"});
+
+        assertTrue(result);
+        verify(queueManager).queueFfaPlayer(player, kit);
+        verify(partyManager, never()).startPartyFfa(any(), any());
     }
 
     @Test

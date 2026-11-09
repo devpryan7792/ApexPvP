@@ -119,7 +119,7 @@ public class KitManager {
     public static ItemStack parseItem(@Nullable String raw) {
         if (raw == null || raw.isBlank()) return null;
         String[] parts = raw.split(":");
-        Material mat = Material.matchMaterial(parts[0].trim());
+        Material mat = matchMaterialRobust(parts[0].trim());
         if (mat == null) return null;
 
         int amount = 1;
@@ -294,7 +294,10 @@ public class KitManager {
         ItemStack[] main = new ItemStack[36];
         System.arraycopy(contents, 0, main, 0, Math.min(contents.length, 36));
 
-        ItemStack icon = (!isAir(main[0]))
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        ItemStack icon = (!isAir(hand))
+                ? hand.clone()
+                : (!isAir(main[0]))
                 ? main[0].clone()
                 : new ItemStack(Material.DIAMOND_SWORD);
 
@@ -318,7 +321,10 @@ public class KitManager {
         ItemStack[] main = new ItemStack[36];
         System.arraycopy(contents, 0, main, 0, Math.min(contents.length, 36));
 
-        ItemStack icon = (!isAir(main[0]))
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        ItemStack icon = (!isAir(hand))
+                ? hand.clone()
+                : (!isAir(main[0]))
                 ? main[0].clone()
                 : existing.getIcon();
 
@@ -345,6 +351,55 @@ public class KitManager {
                 plugin.getLogger().log(Level.SEVERE, "Failed to remove kit " + key + " from kits.yml", e);
             }
         }
+        return true;
+    }
+
+    @Nullable
+    public static Material matchMaterialRobust(@NotNull String rawName) {
+        String name = rawName.trim().toUpperCase();
+        Material mat = Material.matchMaterial(name);
+        if (mat != null) return mat;
+
+        return switch (name) {
+            case "NETHERITE_SPEAR", "SPEAR" -> {
+                Material m = Material.matchMaterial("MACE");
+                yield m != null ? m : Material.TRIDENT;
+            }
+            case "MACE" -> {
+                Material m = Material.matchMaterial("MACE");
+                yield m != null ? m : Material.NETHERITE_AXE;
+            }
+            case "WIND_CHARGE" -> {
+                Material m = Material.matchMaterial("WIND_CHARGE");
+                yield m != null ? m : Material.FIREWORK_ROCKET;
+            }
+            case "TOTEM" -> Material.TOTEM_OF_UNDYING;
+            case "EGAPPLE", "ENCHANTED_GAPPLE" -> Material.ENCHANTED_GOLDEN_APPLE;
+            case "GAPPLE" -> Material.GOLDEN_APPLE;
+            case "ANCHOR" -> Material.RESPAWN_ANCHOR;
+            case "CRYSTAL" -> Material.END_CRYSTAL;
+            case "STEW" -> Material.MUSHROOM_STEW;
+            default -> null;
+        };
+    }
+
+    public boolean setKitIcon(@NotNull String kitId, @NotNull Material iconMat) {
+        String key = kitId.toLowerCase();
+        Kit existing = kits.get(key);
+        if (existing == null) return false;
+        Kit updated = existing.withIcon(new ItemStack(iconMat));
+        registerKit(updated);
+        saveKitToConfig(updated);
+        return true;
+    }
+
+    public boolean setKitIcon(@NotNull String kitId, @NotNull ItemStack iconItem) {
+        String key = kitId.toLowerCase();
+        Kit existing = kits.get(key);
+        if (existing == null) return false;
+        Kit updated = existing.withIcon(iconItem.clone());
+        registerKit(updated);
+        saveKitToConfig(updated);
         return true;
     }
 

@@ -113,6 +113,11 @@ public class EscrowManager {
 
     /**
      * Distributes the pot to the victor minus server commission.
+     *
+     * <p>A real duel has two equal contributions, so the pot is
+     * {@code stakePerPlayer * 2}. A simulated duel only debits the human player
+     * once, so the pot is exactly {@code stakePerPlayer}; paying 2x there would
+     * mint coins out of nothing.</p>
      */
     public synchronized void distributePayout(@NotNull UUID matchId, @NotNull org.bukkit.OfflinePlayer winner, double taxPercent) {
         EscrowRecord record = activeEscrows.remove(matchId);
@@ -121,12 +126,14 @@ public class EscrowManager {
         Economy economy = plugin.getEconomy();
         if (economy == null) return;
 
-        double totalPot = record.stakePerPlayer() * 2.0;
+        double totalPot = record.isSimulated()
+                ? record.stakePerPlayer()
+                : record.stakePerPlayer() * 2.0;
         double tax = totalPot * (Math.max(0.0, taxPercent) / 100.0);
         double netPayout = totalPot - tax;
 
         economy.depositPlayer(winner, netPayout);
-        plugin.getLogger().info("Paid out " + netPayout + " coins (Tax: " + tax + ") to winner " + (winner.getName() != null ? winner.getName() : winner.getUniqueId()) + " for match " + matchId);
+        plugin.getLogger().info("Paid out " + netPayout + " coins (pot: " + totalPot + ", tax: " + tax + ") to winner " + (winner.getName() != null ? winner.getName() : winner.getUniqueId()) + " for match " + matchId);
     }
 
     /**

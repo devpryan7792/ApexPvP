@@ -44,6 +44,10 @@ public class PracticeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (!CommandPermissions.require(player, "apexpvp.practice")) {
+            return true;
+        }
+
         if (!plugin.isCitizensAvailable()) {
             TextUtil.sendPrefixed(player, "<red>Practice Bot combat is currently unavailable (Citizens 2 API is required).");
             return true;

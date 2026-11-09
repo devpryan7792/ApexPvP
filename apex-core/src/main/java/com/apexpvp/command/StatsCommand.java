@@ -38,6 +38,10 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
                              @NotNull Command command,
                              @NotNull String label,
                              @NotNull String[] args) {
+        if (!CommandPermissions.require(sender, "apexpvp.stats")) {
+            return true;
+        }
+
         OfflinePlayer target;
         if (args.length > 0) {
             target = Bukkit.getOfflinePlayer(args[0]);

@@ -98,6 +98,7 @@ public class ArenaDetailEditorGUI implements Listener {
                     ? "<green><bold>Status: ENABLED</bold></green>"
                     : "<red><bold>Status: MAINTENANCE (DISABLED)</bold></red>"));
             List<Component> lore = new ArrayList<>();
+            lore.add(TextUtil.parse("<gray>Type: " + (template.isPrebuilt() ? "<gradient:#FFAA00:#FF5555>Prebuilt Arena</gradient>" : "<gradient:#00FFAA:#00AAFF>Custom Map</gradient>")));
             lore.add(TextUtil.parse("<gray>When disabled, players cannot select</gray>"));
             lore.add(TextUtil.parse("<gray>or queue inside this arena.</gray>"));
             lore.add(Component.empty());
@@ -222,6 +223,32 @@ public class ArenaDetailEditorGUI implements Listener {
             specItem.setItemMeta(specMeta);
         }
         inv.setItem(19, specItem);
+
+        // Slot 20: Map Display Icon
+        Material iconMat = null;
+        if (template.getIconMaterial() != null) {
+            iconMat = Material.matchMaterial(template.getIconMaterial());
+        }
+        if (iconMat == null || iconMat.isAir()) {
+            iconMat = Material.FILLED_MAP;
+        }
+        ItemStack iconItem = new ItemStack(iconMat);
+        ItemMeta icMeta = iconItem.getItemMeta();
+        if (icMeta != null) {
+            icMeta.displayName(TextUtil.parse("<gradient:#00FFAA:#00AAFF><bold>Map Display Icon</bold></gradient>"));
+            List<Component> lore = new ArrayList<>();
+            String current = (template.getIconMaterial() != null) ? template.getIconMaterial() : "<italic>Default Theme Material</italic>";
+            lore.add(TextUtil.parse("<gray>Current Icon: <yellow>" + current + "</yellow></gray>"));
+            lore.add(TextUtil.parse("<gray>This icon represents this map inside all</gray>"));
+            lore.add(TextUtil.parse("<gray>duel and party map selector menus.</gray>"));
+            lore.add(Component.empty());
+            lore.add(TextUtil.parse("<yellow>▶ Left-Click:</yellow> <white>Set to item held in main hand</white>"));
+            lore.add(TextUtil.parse("<gold>▶ Right-Click:</gold> <white>Cycle aesthetic materials</white>"));
+            lore.add(TextUtil.parse("<red>▶ Shift-Right-Click:</red> <white>Reset to Default Theme Material</white>"));
+            icMeta.lore(lore);
+            iconItem.setItemMeta(icMeta);
+        }
+        inv.setItem(20, iconItem);
 
         // Slot 22: Clone Arena (Repeater)
         ItemStack cloneItem = new ItemStack(Material.REPEATER);
@@ -348,6 +375,54 @@ public class ArenaDetailEditorGUI implements Listener {
                 // Spectator Spawn
                 handleSpawnAction(player, arenaId, "spec", click);
             }
+            case 20 -> {
+                // Map Display Icon
+                if (event.isShiftClick() && event.isRightClick()) {
+                    // Reset to default theme material
+                    plugin.getArenaManager().setArenaIcon(arenaId, null);
+                    playSuccessSound(player);
+                    TextUtil.sendPrefixed(player, "<yellow>Reset map icon for <gold>" + arenaId + "</gold> to default theme material.");
+                    open(player, arenaId);
+                    return;
+                }
+                if (event.isRightClick()) {
+                    // Cycle aesthetic materials
+                    List<String> aesthetic = List.of(
+                            "GRASS_BLOCK", "SAND", "SNOW_BLOCK", "NETHERRACK", "END_STONE",
+                            "OBSIDIAN", "AMETHYST_BLOCK", "PRISMARINE", "DEEPSLATE_BRICKS",
+                            "DIAMOND_BLOCK", "GOLD_BLOCK", "IRON_BLOCK", "EMERALD_BLOCK",
+                            "CHERRY_SAPLING", "SEA_LANTERN", "CRYING_OBSIDIAN"
+                    );
+                    String current = template.getIconMaterial();
+                    int nextIdx = 0;
+                    if (current != null) {
+                        int idx = aesthetic.indexOf(current.toUpperCase());
+                        if (idx >= 0) {
+                            nextIdx = (idx + 1) % aesthetic.size();
+                        }
+                    }
+                    String chosen = aesthetic.get(nextIdx);
+                    plugin.getArenaManager().setArenaIcon(arenaId, chosen);
+                    playSuccessSound(player);
+                    TextUtil.sendPrefixed(player, "<green>Cycled map icon for <gold>" + arenaId + "</gold> to <aqua>" + chosen + "</aqua>!");
+                    open(player, arenaId);
+                    return;
+                }
+                // Left-Click: Set to item held in main hand
+                ItemStack hand = player.getInventory().getItemInMainHand();
+                if (hand.getType().isAir()) {
+                    try {
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    } catch (Throwable ignored) {}
+                    TextUtil.sendPrefixed(player, "<red>Hold the item in your main hand that you want as the map icon, then click this button!");
+                    return;
+                }
+                String matName = hand.getType().name();
+                plugin.getArenaManager().setArenaIcon(arenaId, matName);
+                playSuccessSound(player);
+                TextUtil.sendPrefixed(player, "<green>Set map icon for arena <gold>" + arenaId + "</gold> to <aqua>" + matName + "</aqua> from held item!");
+                open(player, arenaId);
+            }
             case 22 -> {
                 // Clone Arena
                 String newId = arenaId + "_2";
@@ -388,14 +463,7 @@ public class ArenaDetailEditorGUI implements Listener {
                 case "a" -> plugin.getArenaManager().setSpawnA(arenaId, player.getLocation());
                 case "b" -> plugin.getArenaManager().setSpawnB(arenaId, player.getLocation());
                 case "spec" -> plugin.getArenaManager().setSpectatorSpawn(arenaId, player.getLocation());
-                case "ffa" -> {
-                    ArenaInstance inst = plugin.getArenaManager().getInstance(arenaId, 0);
-                    Location loc = player.getLocation();
-                    double relX = inst != null ? loc.getX() - inst.getOriginX() : loc.getX();
-                    double relY = inst != null ? loc.getY() - inst.getOriginY() : loc.getY();
-                    double relZ = inst != null ? loc.getZ() - inst.getOriginZ() : loc.getZ();
-                    yield plugin.getArenaManager().setFfaSpawn(arenaId, new ArenaTemplate.SpawnPoint(relX, relY, relZ, loc.getYaw(), loc.getPitch()));
-                }
+                case "ffa" -> plugin.getArenaManager().setFfaSpawn(arenaId, player.getLocation());
                 default -> false;
             };
 
@@ -416,7 +484,7 @@ public class ArenaDetailEditorGUI implements Listener {
                 case "a" -> inst.getSpawnA();
                 case "b" -> inst.getSpawnB();
                 case "spec" -> inst.getSpectatorSpawn();
-                case "ffa" -> inst.getOriginLocation().add(inst.getTemplate().getRelativeFfaSpawn().x(), inst.getTemplate().getRelativeFfaSpawn().y(), inst.getTemplate().getRelativeFfaSpawn().z());
+                case "ffa" -> inst.getFfaSpawn();
                 default -> inst.getSpectatorSpawn();
             };
             player.teleportAsync(target);

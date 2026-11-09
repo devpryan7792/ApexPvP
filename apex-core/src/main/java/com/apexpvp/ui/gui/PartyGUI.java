@@ -189,7 +189,7 @@ public class PartyGUI implements Listener {
                 } else if (!party.isLeader(player.getUniqueId())) {
                     lore.add(TextUtil.parse("<red>Only the Party Leader can start.</red>"));
                 } else {
-                    lore.add(TextUtil.parse("<green>» Click to start party scrimmage</green>"));
+                    lore.add(TextUtil.parse("<green>» Click to choose Kit & Map</green>"));
                 }
                 dMeta.lore(lore);
                 duelItem.setItemMeta(dMeta);
@@ -211,7 +211,7 @@ public class PartyGUI implements Listener {
                 } else if (!party.isLeader(player.getUniqueId())) {
                     lore.add(TextUtil.parse("<red>Only the Party Leader can start.</red>"));
                 } else {
-                    lore.add(TextUtil.parse("<green>» Click to start Party FFA</green>"));
+                    lore.add(TextUtil.parse("<green>» Click to choose Kit & Map</green>"));
                 }
                 ffaMeta.lore(lore);
                 ffaItem.setItemMeta(ffaMeta);
@@ -304,10 +304,7 @@ public class PartyGUI implements Listener {
                     return;
                 }
                 player.closeInventory();
-                Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
-                if (kit != null) {
-                    plugin.getPartyManager().splitParty(player, kit);
-                }
+                plugin.getPartyKitSelectGUI().open(player, PartyKitSelectGUI.PartyMatchType.SPLIT);
             } else if (slot == 21) {
                 // Party Free-For-All (FFA)
                 if (!isLeader) {
@@ -319,10 +316,7 @@ public class PartyGUI implements Listener {
                     return;
                 }
                 player.closeInventory();
-                Kit kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
-                if (kit != null) {
-                    plugin.getPartyManager().startPartyFfa(player, kit);
-                }
+                plugin.getPartyKitSelectGUI().open(player, PartyKitSelectGUI.PartyMatchType.FFA);
             } else if (slot == 22) {
                 // Open invite menu
                 plugin.getPartyInviteGUI().open(player);

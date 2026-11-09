@@ -5,11 +5,13 @@ import com.apexpvp.kit.Kit;
 import com.apexpvp.ui.gui.KitGUI;
 import com.apexpvp.util.TextUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +44,10 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                              @NotNull Command command,
                              @NotNull String label,
                              @NotNull String[] args) {
+        if (!CommandPermissions.require(sender, "apexpvp.kit")) {
+            return true;
+        }
+
         if (label.equalsIgnoreCase("kiteditor")) {
             if (!(sender instanceof Player player)) {
                 sender.sendMessage(TextUtil.parse("<red>Only players can edit kit layouts."));
@@ -95,7 +101,11 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                     TextUtil.sendPrefixed(player, "<red>Kit '" + id + "' not found.");
                     return true;
                 }
-                plugin.getKitEditorGUI().open(player, kit);
+                if (player.hasPermission("apexpvp.kit.admin")) {
+                    plugin.getAdminKitEditorGUI().open(player, kit);
+                } else {
+                    plugin.getKitEditorGUI().open(player, kit);
+                }
                 return true;
             }
             case "get" -> {
@@ -143,6 +153,45 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                     TextUtil.sendPrefixed(player, "<red>Kit '" + id + "' does not exist. Use /kit create " + id + " to create a new kit first.");
                 }
                 return true;
+            }
+            case "seticon" -> {
+                if (!sender.hasPermission("apexpvp.kit.admin")) {
+                    sender.sendMessage(TextUtil.parse("<red>You do not have permission to modify kit icons."));
+                    return true;
+                }
+                if (args.length < 2) {
+                    TextUtil.sendPrefixed(sender, "<red>Usage: /kit seticon <kit> [material]");
+                    return true;
+                }
+                String id = args[1].toLowerCase();
+                Kit kit = plugin.getKitManager().getKit(id);
+                if (kit == null) {
+                    TextUtil.sendPrefixed(sender, "<red>Kit '" + id + "' not found.");
+                    return true;
+                }
+
+                if (args.length >= 3) {
+                    Material mat = Material.matchMaterial(args[2].toUpperCase());
+                    if (mat == null) {
+                        TextUtil.sendPrefixed(sender, "<red>Invalid material: " + args[2]);
+                        return true;
+                    }
+                    plugin.getKitManager().setKitIcon(id, mat);
+                    TextUtil.sendPrefixed(sender, "<green>Updated icon of kit <yellow>" + id + "</yellow> to <gold>" + mat.name() + "</gold> (saved to kits.yml)!");
+                    return true;
+                } else if (sender instanceof Player player) {
+                    ItemStack hand = player.getInventory().getItemInMainHand();
+                    if (hand.getType() != Material.AIR) {
+                        plugin.getKitManager().setKitIcon(id, hand.clone());
+                        TextUtil.sendPrefixed(player, "<green>Updated icon of kit <yellow>" + id + "</yellow> to held item <gold>" + hand.getType().name() + "</gold> (saved to kits.yml)!");
+                    } else {
+                        TextUtil.sendPrefixed(player, "<red>Please hold an item in your hand or specify a material: /kit seticon " + id + " <material>");
+                    }
+                    return true;
+                } else {
+                    TextUtil.sendPrefixed(sender, "<red>Console must specify a material name: /kit seticon " + id + " <material>");
+                    return true;
+                }
             }
             case "create" -> {
                 if (!sender.hasPermission("apexpvp.kit.admin")) {
@@ -243,17 +292,24 @@ public class KitCommand implements CommandExecutor, TabCompleter {
                 list.add("delete");
                 list.add("give");
                 list.add("set");
+                list.add("seticon");
                 list.add("get");
             }
             return list;
         }
 
         String sub = args[0].toLowerCase();
-        if (sub.equals("delete") || sub.equals("get") || sub.equals("set") || sub.equals("editor") || sub.equals("edit")) {
+        if (sub.equals("delete") || sub.equals("get") || sub.equals("set") || sub.equals("seticon") || sub.equals("editor") || sub.equals("edit")) {
             if (args.length == 2) {
                 List<String> kits = new ArrayList<>();
                 for (Kit k : plugin.getKitManager().getAllKits()) kits.add(k.getId());
                 return kits;
+            } else if (args.length == 3 && sub.equals("seticon")) {
+                List<String> mats = new ArrayList<>();
+                for (Material m : Material.values()) {
+                    if (m.isItem() && !m.isAir()) mats.add(m.name().toLowerCase());
+                }
+                return mats;
             }
         } else if (sub.equals("give")) {
             if (args.length == 2) {

@@ -11,9 +11,14 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -158,36 +163,50 @@ public class BettingManager {
             return;
         }
 
-        // Identify winner UUID
-        UUID winnerUuid = null;
-        String winnerName = "Victor";
+        // Collect every participant on the winning team. Team matches have more
+        // than one winner, so considering only the first member would strand the
+        // bets placed on the others in the pool.
+        Set<UUID> winningUuids = new LinkedHashSet<>();
+        List<String> winnerNames = new ArrayList<>();
         for (MatchParticipant part : match.getParticipants()) {
             if (part.getTeamIndex() == winningTeamIndex) {
-                winnerUuid = part.getUuid();
-                winnerName = part.getName();
-                break;
+                winningUuids.add(part.getUuid());
+                winnerNames.add(part.getName());
             }
         }
 
-        if (winnerUuid == null) {
+        if (winningUuids.isEmpty()) {
             refundPool(pool);
             return;
         }
 
+        String winnerName = String.join(" & ", winnerNames);
+
         double totalPool = pool.getTotalPot();
-        double totalWinnerBets = pool.getTotalBetsFor(winnerUuid);
+        double totalWinnerBets = 0.0;
+        for (UUID uuid : winningUuids) {
+            totalWinnerBets += pool.getTotalBetsFor(uuid);
+        }
 
         if (totalWinnerBets <= 0.0) {
-            // Nobody bet on the victor: refund everyone
+            // Nobody bet on any member of the winning team: refund everyone
             refundPool(pool);
             match.broadcast("<yellow>[Betting] No bets were placed on <gold>" + winnerName + "</gold>. All bets refunded.");
             return;
         }
 
+        // Aggregate each bettor's stakes across every winning-team participant so
+        // a bettor who backed two winners is paid on the combined stake.
+        Map<UUID, Double> winnerBets = new LinkedHashMap<>();
+        for (UUID uuid : winningUuids) {
+            for (Map.Entry<UUID, Double> entry : pool.getBetsFor(uuid).entrySet()) {
+                winnerBets.merge(entry.getKey(), entry.getValue(), Double::sum);
+            }
+        }
+
         double taxPercent = plugin.getConfig().getDouble("duels.betting.server-tax-percent", 5.0);
         double netPool = totalPool * (1.0 - (Math.max(0.0, taxPercent) / 100.0));
 
-        Map<UUID, Double> winnerBets = pool.getBetsFor(winnerUuid);
         for (Map.Entry<UUID, Double> entry : winnerBets.entrySet()) {
             UUID bettorUuid = entry.getKey();
             double betAmount = entry.getValue();

@@ -68,6 +68,9 @@ public class Kit {
             Map<Integer, Integer> mapping = HotbarSerializer.deserialize(customHotbarLayout);
             if (HotbarLayoutValidator.isValid(mapping)) {
                 ItemStack[] reordered = cloneItemArray(finalContents, 36);
+                java.util.Set<Integer> assignedTargets = mapping.keySet();
+                java.util.Set<Integer> usedSources = new java.util.HashSet<>(mapping.values());
+
                 // Clear all source slots being moved to prevent cloning items
                 for (int sourceSlot : mapping.values()) {
                     if (sourceSlot < reordered.length) {
@@ -85,6 +88,13 @@ public class Kit {
                     int sourceSlot = entry.getValue();
                     if (sourceSlot < mainContents.length && mainContents[sourceSlot] != null) {
                         reordered[targetHotbar] = mainContents[sourceSlot].clone();
+                    }
+                    // Preserve displaced item: if the target slot originally had an item and
+                    // was not reassigned to another target slot, place it in the vacated source slot
+                    if (targetHotbar != sourceSlot && !usedSources.contains(targetHotbar) && !assignedTargets.contains(sourceSlot)) {
+                        if (targetHotbar < mainContents.length && mainContents[targetHotbar] != null && sourceSlot < reordered.length && reordered[sourceSlot] == null) {
+                            reordered[sourceSlot] = mainContents[targetHotbar].clone();
+                        }
                     }
                 }
                 finalContents = reordered;
@@ -155,6 +165,11 @@ public class Kit {
     @NotNull
     public ItemStack getIcon() {
         return icon.clone();
+    }
+
+    @NotNull
+    public Kit withIcon(@NotNull ItemStack newIcon) {
+        return new Kit(id, displayName, newIcon, mainContents, armorContents, offHand, potionEffects, rules);
     }
 
     @NotNull

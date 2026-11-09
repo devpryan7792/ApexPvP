@@ -134,6 +134,10 @@ public class KitGUI implements Listener {
                     lore.add(TextUtil.parse("<yellow><bold>SHIFT-CLICK</bold></yellow> <gray>» Queue Ranked Match</gray>"));
                 }
 
+                if (player.hasPermission("apexpvp.kit.admin")) {
+                    lore.add(TextUtil.parse("<dark_purple><bold>MIDDLE-CLICK / SHIFT-RIGHT</bold></dark_purple> <light_purple>» Set Icon to Held Item</light_purple>"));
+                }
+
                 meta.lore(lore);
                 meta.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, kit.getId());
                 item.setItemMeta(meta);
@@ -174,6 +178,21 @@ public class KitGUI implements Listener {
                 return;
             }
 
+            // Admin Quick Icon Customization from Held Item
+            if (player.hasPermission("apexpvp.kit.admin") && (event.getClick() == org.bukkit.event.inventory.ClickType.MIDDLE || (event.isShiftClick() && event.isRightClick()))) {
+                ItemStack hand = player.getInventory().getItemInMainHand();
+                if (hand.getType() != Material.AIR) {
+                    plugin.getKitManager().setKitIcon(kit.getId(), hand.clone());
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1.0f, 1.5f);
+                    TextUtil.sendPrefixed(player, "<green>Customized icon of kit <yellow>" + kit.getId() + "</yellow> to held item <gold>" + hand.getType().name() + "</gold>!");
+                    open(player, holder.isEditorMode());
+                    return;
+                } else {
+                    TextUtil.sendPrefixed(player, "<red>Hold the item you want as the icon in your hand, then Middle-Click or Shift-Right-Click!");
+                    return;
+                }
+            }
+
             if (event.isRightClick()) {
                 player.closeInventory();
                 player.performCommand("practice " + kit.getId());
@@ -186,9 +205,13 @@ public class KitGUI implements Listener {
                 return;
             }
 
-            // Normal Left-Click (and Editor Mode): Open Kit Layout Editor directly!
+            // Normal Left-Click:
             player.closeInventory();
-            plugin.getKitEditorGUI().open(player, kit);
+            if (holder.isEditorMode() && player.hasPermission("apexpvp.kit.admin")) {
+                plugin.getAdminKitEditorGUI().open(player, kit);
+            } else {
+                plugin.getKitEditorGUI().open(player, kit);
+            }
         }
     }
 

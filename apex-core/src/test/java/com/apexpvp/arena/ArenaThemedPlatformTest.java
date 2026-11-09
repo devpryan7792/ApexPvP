@@ -18,8 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ArenaThemedPlatformTest {
 
     private static final List<String> ICONIC_ARENAS = List.of(
-            "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak", "sumo",
-            "celestial", "glaciem", "spiritual"
+            "colosseum", "temple", "netherforge", "cybervoid", "desertdune", "frostpeak", "sumo"
     );
 
     @Test
@@ -39,7 +38,7 @@ class ArenaThemedPlatformTest {
             assertNotNull(sec, "Template [" + arenaName + "] must be defined in arenas.yml");
 
             int templateId = sec.getInt("template-id");
-            assertTrue(templateId >= 1 && templateId <= 10, "Template ID for " + arenaName + " must be between 1 and 10, got: " + templateId);
+            assertTrue(templateId >= 1 && templateId <= 7, "Template ID for " + arenaName + " must be between 1 and 7, got: " + templateId);
             assertTrue(registeredIds.add(templateId), "Duplicate template-id detected: " + templateId);
 
             assertNotNull(sec.getString("display-name"), "display-name must not be null for " + arenaName);

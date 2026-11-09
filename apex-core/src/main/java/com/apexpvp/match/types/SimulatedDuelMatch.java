@@ -142,14 +142,14 @@ public class SimulatedDuelMatch extends Match {
                 }
             }
 
-            // Distribute escrow stake payout if wagered
+            // Distribute escrow stake payout if wagered. Only the player staked,
+            // so the pot is the single stake (never 2x).
             if (stakeAmount > 0 && player != null) {
                 double taxPercent = plugin.getConfig().getDouble("duels.betting.server-tax-percent", 5.0);
                 plugin.getEscrowManager().distributePayout(matchId, player, taxPercent);
-                double totalPot = stakeAmount * 2.0;
-                double taxDeduction = totalPot * (taxPercent / 100.0);
-                double netWinnings = totalPot - taxDeduction;
-                broadcast("<gold>" + player.getName() + "</gold> won the wager of <yellow>" + netWinnings + "</yellow> coins!");
+                double taxDeduction = stakeAmount * (taxPercent / 100.0);
+                double netWinnings = stakeAmount - taxDeduction;
+                broadcast("<gold>" + player.getName() + "</gold> had their <yellow>" + netWinnings + "</yellow> coin stake returned (tax: " + taxDeduction + ").");
             }
 
         } else if (winningTeamIndex == 1) {

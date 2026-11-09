@@ -73,6 +73,16 @@ public class PlayerRestoreSnapshot {
      * Safely restores the player's pristine inventory, vitals, and position.
      */
     public void restore(@NotNull Player player) {
+        restore(player, false);
+    }
+
+    /**
+     * Restores the pre-match state and teleports the player back.
+     *
+     * @param teleportToLobby when true, ignore the saved return location and use the default
+     *                        world spawn (the server lobby); when false, use the saved location.
+     */
+    public void restore(@NotNull Player player, boolean teleportToLobby) {
         player.getInventory().clear();
 
         // Restore inventory items
@@ -129,9 +139,11 @@ public class PlayerRestoreSnapshot {
         } catch (Throwable ignored) {
         }
 
-        // Teleport back to original position / lobby (redirect to default world if saved location is in arena world)
+        // Teleport back to the lobby or the original position. Never restore a saved location
+        // inside the arena world directly.
         Location targetLoc = returnLocation;
-        if (targetLoc.getWorld() != null && targetLoc.getWorld().getName().equalsIgnoreCase("apex_arenas")) {
+        if (teleportToLobby
+                || (targetLoc.getWorld() != null && targetLoc.getWorld().getName().equalsIgnoreCase("apex_arenas"))) {
             org.bukkit.World defaultWorld = org.bukkit.Bukkit.getWorlds().get(0);
             if (defaultWorld != null) {
                 targetLoc = defaultWorld.getSpawnLocation();

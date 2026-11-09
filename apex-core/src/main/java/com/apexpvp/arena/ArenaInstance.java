@@ -52,6 +52,16 @@ public class ArenaInstance {
         this.bounds = template.getRelativeBounds().offset(originX, originY, originZ);
         this.spawnA = template.getRelativeSpawnA().toLocation(world, originX, originY, originZ);
         this.spawnB = template.getRelativeSpawnB().toLocation(world, originX, originY, originZ);
+
+        // Anti-collision guard: If Spawn A and Spawn B are too close (< 3 blocks), separate them across arena
+        if (this.spawnA.distanceSquared(this.spawnB) < 9.0) {
+            int halfDist = Math.max(10, (bounds.getMaxX() - bounds.getMinX()) / 3);
+            this.spawnA.setX(originX - halfDist + 0.5);
+            this.spawnB.setX(originX + halfDist + 0.5);
+            this.spawnA.setYaw(-90.0f);
+            this.spawnB.setYaw(90.0f);
+        }
+
         this.spectatorSpawn = template.getRelativeSpectatorSpawn().toLocation(world, originX, originY, originZ);
         ArenaTemplate.SpawnPoint relFfa = template.getRelativeFfaSpawn();
         this.ffaSpawn = (relFfa != null)
@@ -80,6 +90,18 @@ public class ArenaInstance {
             removeChunkTickets(plugin);
             onComplete.run();
         }).start();
+    }
+
+    /**
+     * Releases the instance without regenerating blocks. Used when the template disables
+     * arena regeneration (e.g. prebuilt maps that never change).
+     */
+    public void finishWithoutRollback(@NotNull Plugin plugin, @NotNull Runnable onComplete) {
+        rollbackSnapshot.clear();
+        this.lastUsedTimestamp = System.currentTimeMillis();
+        state.set(ArenaState.AVAILABLE);
+        removeChunkTickets(plugin);
+        onComplete.run();
     }
 
     public void addChunkTickets(@NotNull Plugin plugin) {
@@ -136,12 +158,12 @@ public class ArenaInstance {
 
     @NotNull
     public Location getSpawnA() {
-        return spawnA.clone();
+        return SafeSpawnFinder.resolveSafeSpawn(spawnA.clone());
     }
 
     @NotNull
     public Location getSpawnB() {
-        return spawnB.clone();
+        return SafeSpawnFinder.resolveSafeSpawn(spawnB.clone());
     }
 
     @NotNull
@@ -151,7 +173,7 @@ public class ArenaInstance {
 
     @NotNull
     public Location getFfaSpawn() {
-        return ffaSpawn.clone();
+        return SafeSpawnFinder.resolveSafeSpawn(ffaSpawn.clone());
     }
 
     @NotNull

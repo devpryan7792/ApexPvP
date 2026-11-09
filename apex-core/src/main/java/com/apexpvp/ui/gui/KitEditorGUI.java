@@ -64,8 +64,15 @@ public class KitEditorGUI implements Listener {
     private final NamespacedKey sourceSlotKey;
 
     public KitEditorGUI(@NotNull ApexPvPPlugin plugin) {
+        this(plugin, new NamespacedKey(plugin, "kit_source_slot"));
+    }
+
+    /**
+     * Testable constructor: allows injecting the PDC key without a live plugin.
+     */
+    KitEditorGUI(@NotNull ApexPvPPlugin plugin, @NotNull NamespacedKey sourceSlotKey) {
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
-        this.sourceSlotKey = new NamespacedKey(plugin, "kit_source_slot");
+        this.sourceSlotKey = Objects.requireNonNull(sourceSlotKey, "sourceSlotKey cannot be null");
     }
 
     /**
@@ -200,6 +207,18 @@ public class KitEditorGUI implements Listener {
 
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
+        }
+
+        // Block every interaction that could move a kit item out of the editor
+        // and into the player's real inventory. Left/right clicks inside the
+        // editable rows remain the only way to rearrange the layout.
+        switch (event.getClick()) {
+            case NUMBER_KEY, DROP, CONTROL_DROP, SWAP_OFFHAND, DOUBLE_CLICK,
+                 MIDDLE, CREATIVE, WINDOW_BORDER_LEFT, WINDOW_BORDER_RIGHT, UNKNOWN -> {
+                event.setCancelled(true);
+                return;
+            }
+            default -> { /* LEFT / RIGHT / SHIFT_* handled below */ }
         }
 
         // Cancel interactions with the player's personal inventory to prevent theft

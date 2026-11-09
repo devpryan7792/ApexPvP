@@ -2,7 +2,6 @@ package com.apexpvp.command;
 
 import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.kit.Kit;
-import com.apexpvp.party.Party;
 import com.apexpvp.util.TextUtil;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -39,16 +38,13 @@ public class FfaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (!CommandPermissions.require(player, "apexpvp.ffa")) {
+            return true;
+        }
+
         if (args.length == 0) {
-            // Check if player is party leader -> quick launch party FFA with default kit
-            Party party = plugin.getPartyManager().getParty(player);
-            if (party != null && party.isLeader(player.getUniqueId()) && party.getSize() >= 2) {
-                Kit defaultKit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
-                if (defaultKit != null) {
-                    plugin.getPartyManager().startPartyFfa(player, defaultKit);
-                    return true;
-                }
-            }
+            // Always show usage. Starting a match requires an explicit
+            // /ffa party or /team ffa so nobody is dropped into a fight by accident.
             sendHelp(player);
             return true;
         }
@@ -107,13 +103,9 @@ public class FfaCommand implements CommandExecutor, TabCompleter {
                 // Check if user passed a kit name directly, e.g. /ffa spear
                 Kit directKit = plugin.getKitManager().getKit(sub);
                 if (directKit != null) {
-                    // If in party and leader, start party FFA
-                    Party party = plugin.getPartyManager().getParty(player);
-                    if (party != null && party.isLeader(player.getUniqueId()) && party.getSize() >= 2) {
-                        plugin.getPartyManager().startPartyFfa(player, directKit);
-                    } else {
-                        plugin.getQueueManager().queueFfaPlayer(player, directKit);
-                    }
+                    // Direct kit always means "join the queue". Party scrimmages
+                    // require the explicit /ffa party or /team ffa form.
+                    plugin.getQueueManager().queueFfaPlayer(player, directKit);
                     return true;
                 }
                 sendHelp(player);
@@ -129,7 +121,7 @@ public class FfaCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(TextUtil.parse("<yellow>/ffa queue <kit> <gray>- Join FFA matchmaking queue"));
         player.sendMessage(TextUtil.parse("<yellow>/ffa leave <gray>- Leave active FFA queue"));
         player.sendMessage(TextUtil.parse("<yellow>/ffa status <gray>- View active FFA queues"));
-        player.sendMessage(TextUtil.parse("<yellow>/party ffa [kit] <gray>- Start an FFA scrimmage with your party (2-16p)"));
+        player.sendMessage(TextUtil.parse("<yellow>/ffa party [kit] <gray>- Start an FFA scrimmage with your team (2-16p)"));
     }
 
     @Override

@@ -17,6 +17,7 @@ public class DuelRequest {
     private final Kit kit;
     private final ArenaTemplate template;
     private final double stake;
+    private final boolean ownInventory;
     private final long createdAt;
 
     public DuelRequest(@NotNull UUID challengerId,
@@ -24,11 +25,21 @@ public class DuelRequest {
                        @NotNull Kit kit,
                        @NotNull ArenaTemplate template,
                        double stake) {
+        this(challengerId, targetId, kit, template, stake, false);
+    }
+
+    public DuelRequest(@NotNull UUID challengerId,
+                       @NotNull UUID targetId,
+                       @NotNull Kit kit,
+                       @NotNull ArenaTemplate template,
+                       double stake,
+                       boolean ownInventory) {
         this.challengerId = Objects.requireNonNull(challengerId, "challengerId cannot be null");
         this.targetId = Objects.requireNonNull(targetId, "targetId cannot be null");
         this.kit = Objects.requireNonNull(kit, "kit cannot be null");
         this.template = Objects.requireNonNull(template, "template cannot be null");
         this.stake = Math.max(0.0, stake);
+        this.ownInventory = ownInventory;
         this.createdAt = System.currentTimeMillis();
     }
 
@@ -58,6 +69,10 @@ public class DuelRequest {
 
     public double getStake() {
         return stake;
+    }
+
+    public boolean isOwnInventory() {
+        return ownInventory;
     }
 
     public long getCreatedAt() {

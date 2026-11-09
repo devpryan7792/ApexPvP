@@ -11,6 +11,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -156,5 +157,45 @@ public class MatchListenerTest {
         when(clickEvent.getSlotType()).thenReturn(InventoryType.SlotType.CRAFTING);
         listener.onCraftInventoryClick(clickEvent);
         verify(clickEvent).setCancelled(true);
+    }
+
+    @Test
+    @DisplayName("Lethal damage keeps the hit alive so an offhand totem can resurrect the player")
+    void testOffhandTotemPreventsEarlyElimination() {
+        when(kit.getRules()).thenReturn(new KitRules(false, false, false, false, false, false, false, 0, 0));
+        when(player.getHealth()).thenReturn(4.0);
+        ItemStack totem = mock(ItemStack.class);
+        when(totem.getType()).thenReturn(Material.TOTEM_OF_UNDYING);
+        when(inventory.getItemInMainHand()).thenReturn(null);
+        when(inventory.getItemInOffHand()).thenReturn(totem);
+
+        EntityDamageEvent event = mock(EntityDamageEvent.class);
+        when(event.getEntity()).thenReturn(player);
+        when(event.getFinalDamage()).thenReturn(10.0);
+
+        listener.onEntityDamage(event);
+
+        verify(event, never()).setCancelled(true);
+        verify(player, never()).setHealth(20.0);
+        verify(match, never()).onPlayerDeath(any(), any());
+    }
+
+    @Test
+    @DisplayName("Lethal damage without a totem still ends the participant's life")
+    void testLethalDamageWithoutTotemEliminates() {
+        when(kit.getRules()).thenReturn(new KitRules(false, false, false, false, false, false, false, 0, 0));
+        when(player.getHealth()).thenReturn(4.0);
+        when(inventory.getItemInMainHand()).thenReturn(null);
+        when(inventory.getItemInOffHand()).thenReturn(null);
+
+        EntityDamageEvent event = mock(EntityDamageEvent.class);
+        when(event.getEntity()).thenReturn(player);
+        when(event.getFinalDamage()).thenReturn(10.0);
+
+        listener.onEntityDamage(event);
+
+        verify(event).setCancelled(true);
+        verify(player).setHealth(20.0);
+        verify(match).onPlayerDeath(player, null);
     }
 }

@@ -190,4 +190,82 @@ class BettingManagerTest {
         verify(economy, times(1)).depositPlayer(server.getOfflinePlayer(b1Uuid), 100.0);
         verify(economy, times(1)).depositPlayer(server.getOfflinePlayer(b3Uuid), 300.0);
     }
+
+    @Test
+    @DisplayName("Team matches pay bettors of every winning-team member")
+    void testTeamPayoutCoversAllWinners() {
+        Match teamMatch = mock(Match.class);
+        UUID teamMatchId = UUID.randomUUID();
+        when(teamMatch.getMatchId()).thenReturn(teamMatchId);
+        when(teamMatch.getState()).thenReturn(MatchState.COUNTDOWN);
+
+        UUID winner1 = UUID.randomUUID();
+        UUID winner2 = UUID.randomUUID();
+        UUID loser1 = UUID.randomUUID();
+        UUID loser2 = UUID.randomUUID();
+        MatchParticipant w1 = new MatchParticipant(winner1, "Winner1", 0);
+        MatchParticipant w2 = new MatchParticipant(winner2, "Winner2", 0);
+        MatchParticipant l1 = new MatchParticipant(loser1, "Loser1", 1);
+        MatchParticipant l2 = new MatchParticipant(loser2, "Loser2", 1);
+        when(teamMatch.getParticipants()).thenReturn(Arrays.asList(w1, w2, l1, l2));
+        when(teamMatch.getParticipant(winner1)).thenReturn(w1);
+        when(teamMatch.getParticipant(winner2)).thenReturn(w2);
+        when(teamMatch.getParticipant(loser1)).thenReturn(l1);
+        when(teamMatch.getParticipant(loser2)).thenReturn(l2);
+        when(teamMatch.isParticipant(winner1)).thenReturn(true);
+        when(teamMatch.isParticipant(winner2)).thenReturn(true);
+        when(teamMatch.isParticipant(loser1)).thenReturn(true);
+        when(teamMatch.isParticipant(loser2)).thenReturn(true);
+
+        when(economy.has(any(Player.class), anyDouble())).thenReturn(true);
+        when(economy.withdrawPlayer(any(Player.class), anyDouble()))
+                .thenReturn(new EconomyResponse(100.0, 900.0, EconomyResponse.ResponseType.SUCCESS, ""));
+
+        bettingManager.placeBet(bettor1, teamMatch, winner1, 100.0);
+        bettingManager.placeBet(bettor2, teamMatch, winner2, 100.0);
+        bettingManager.placeBet(bettor3, teamMatch, loser1, 200.0);
+
+        // Pool 400, winning bets 200, tax 5% -> net 380; each 100-stake bettor gets 190.
+        bettingManager.onMatchEnd(teamMatch, 0);
+
+        verify(economy, times(1)).depositPlayer(server.getOfflinePlayer(b1Uuid), 190.0);
+        verify(economy, times(1)).depositPlayer(server.getOfflinePlayer(b2Uuid), 190.0);
+        verify(economy, never()).depositPlayer(eq(server.getOfflinePlayer(b3Uuid)), anyDouble());
+    }
+
+    @Test
+    @DisplayName("Bets on a non-first winning-team member are paid, not refunded")
+    void testTeamPayoutWhenOnlySecondaryWinnerHasBets() {
+        Match teamMatch = mock(Match.class);
+        UUID teamMatchId = UUID.randomUUID();
+        when(teamMatch.getMatchId()).thenReturn(teamMatchId);
+        when(teamMatch.getState()).thenReturn(MatchState.COUNTDOWN);
+
+        UUID winner1 = UUID.randomUUID();
+        UUID winner2 = UUID.randomUUID();
+        UUID loser1 = UUID.randomUUID();
+        MatchParticipant w1 = new MatchParticipant(winner1, "Winner1", 0);
+        MatchParticipant w2 = new MatchParticipant(winner2, "Winner2", 0);
+        MatchParticipant l1 = new MatchParticipant(loser1, "Loser1", 1);
+        when(teamMatch.getParticipants()).thenReturn(Arrays.asList(w1, w2, l1));
+        when(teamMatch.getParticipant(winner1)).thenReturn(w1);
+        when(teamMatch.getParticipant(winner2)).thenReturn(w2);
+        when(teamMatch.getParticipant(loser1)).thenReturn(l1);
+        when(teamMatch.isParticipant(winner1)).thenReturn(true);
+        when(teamMatch.isParticipant(winner2)).thenReturn(true);
+        when(teamMatch.isParticipant(loser1)).thenReturn(true);
+
+        when(economy.has(any(Player.class), anyDouble())).thenReturn(true);
+        when(economy.withdrawPlayer(any(Player.class), anyDouble()))
+                .thenReturn(new EconomyResponse(100.0, 900.0, EconomyResponse.ResponseType.SUCCESS, ""));
+
+        bettingManager.placeBet(bettor1, teamMatch, winner2, 100.0);
+        bettingManager.placeBet(bettor3, teamMatch, loser1, 100.0);
+
+        // Pool 200, tax 5% -> net 190 to the only winning bettor (no 200 refund).
+        bettingManager.onMatchEnd(teamMatch, 0);
+
+        verify(economy, times(1)).depositPlayer(server.getOfflinePlayer(b1Uuid), 190.0);
+        verify(economy, never()).depositPlayer(eq(server.getOfflinePlayer(b3Uuid)), anyDouble());
+    }
 }

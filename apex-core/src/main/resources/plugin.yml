@@ -22,9 +22,10 @@ commands:
   leavequeue:
     description: Leave ranked matchmaking queue
     usage: /leavequeue
-  party:
-    description: Party management and team PvP
-    usage: /party <create|invite|accept|kick|leave|disband|split>
+  team:
+    description: Team management, scrimmages, and party PvP
+    usage: /team <create|invite|join|leave|disband|split|ffa|duel|info>
+    aliases: [party, t]
   practice:
     description: Single-player PvE practice bot match
     usage: /practice <kit> [difficulty]
@@ -47,7 +48,7 @@ commands:
     usage: /bet <player> <amount>
   kits:
     description: Open the kit selection menu or configure combat kits
-    usage: /kits [list|create|delete|give]
+    usage: /kits [list|create|set|seticon|delete|give|editor]
     aliases: [kit]
   kiteditor:
     description: Open the visual kit layout editor to customize your hotbar
@@ -55,7 +56,7 @@ commands:
     aliases: [editkit, layout]
   arena:
     description: Arena management, instance inspection, and spawn configuration
-    usage: /arena <create|list|tp|setspawn|reload>
+    usage: /arena <create|list|tp|setspawn|toggle|prebuilt|seticon|reload>
     permission: apexpvp.arena.admin
   ranked:
     description: Competitive ranked matchmaking hub, direct kit queuing, and status
@@ -97,8 +98,8 @@ permissions:
   apexpvp.queue:
     description: Access to /queue and /leavequeue
     default: true
-  apexpvp.party:
-    description: Access to /party
+  apexpvp.team:
+    description: Access to /team
     default: true
   apexpvp.practice:
     description: Access to /practice

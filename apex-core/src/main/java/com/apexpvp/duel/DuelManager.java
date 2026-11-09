@@ -37,6 +37,15 @@ public class DuelManager {
                                  @NotNull Kit kit,
                                  @NotNull ArenaTemplate template,
                                  double stake) {
+        return sendChallenge(challenger, target, kit, template, stake, false);
+    }
+
+    public boolean sendChallenge(@NotNull Player challenger,
+                                 @NotNull Player target,
+                                 @NotNull Kit kit,
+                                 @NotNull ArenaTemplate template,
+                                 double stake,
+                                 boolean ownInventory) {
         if (challenger.equals(target)) {
             TextUtil.sendPrefixed(challenger, "<red>You cannot duel yourself!");
             return false;
@@ -66,17 +75,18 @@ public class DuelManager {
             }
         }
 
-        DuelRequest request = new DuelRequest(challenger.getUniqueId(), target.getUniqueId(), kit, template, stake);
+        DuelRequest request = new DuelRequest(challenger.getUniqueId(), target.getUniqueId(), kit, template, stake, ownInventory);
         incomingRequests.computeIfAbsent(target.getUniqueId(), k -> new ConcurrentHashMap<>()).put(challenger.getUniqueId(), request);
 
+        String modeInfo = ownInventory ? " <light_purple>[Own Inventory]</light_purple>" : "";
         String stakeInfo = stake > 0 ? " for <gold>" + stake + "</gold> coins" : "";
-        TextUtil.sendPrefixed(challenger, "<green>Duel challenge sent to <gold><target></gold> with kit <yellow><kit></yellow>" + stakeInfo + ".",
+        TextUtil.sendPrefixed(challenger, "<green>Duel challenge sent to <gold><target></gold> with kit <yellow><kit></yellow>" + modeInfo + stakeInfo + ".",
                 Placeholder.parsed("target", target.getName()),
                 Placeholder.parsed("kit", kit.getDisplayName()));
 
         // Send rich clickable invite to target
         String inviteMessage = "<gradient:#FFAA00:#FF5555><bold>DUEL CHALLENGE!</bold></gradient> <gold>" + challenger.getName() +
-                "</gold> challenged you with kit <yellow>" + kit.getDisplayName() + "</yellow>" + stakeInfo + " in <aqua>" + template.getDisplayName() + "</aqua>!\n" +
+                "</gold> challenged you with kit <yellow>" + kit.getDisplayName() + "</yellow>" + modeInfo + stakeInfo + " in <aqua>" + template.getDisplayName() + "</aqua>!\n" +
                 "<click:run_command:'/duel preview " + challenger.getName() + "'><hover:show_text:'<yellow>Click to view kit & arena details before deciding'><gold><bold>[PREVIEW & ACCEPT]</bold></gold></hover></click>  " +
                 "<click:run_command:'/duel accept " + challenger.getName() + "'><hover:show_text:'<green>Click to accept duel immediately'><green><bold>[ACCEPT]</bold></green></hover></click>  " +
                 "<click:run_command:'/duel decline " + challenger.getName() + "'><hover:show_text:'<red>Click to decline duel'><red><bold>[DECLINE]</bold></red></hover></click>";
@@ -111,6 +121,7 @@ public class DuelManager {
         }
 
         DuelMatch match = new DuelMatch(plugin, arenaInstance, request.getKit(), challenger, target, request.getStake());
+        match.setOwnInventory(request.isOwnInventory());
 
         // Lock Escrow Stakes before match initialization using the match's exact ID
         if (request.getStake() > 0.0) {

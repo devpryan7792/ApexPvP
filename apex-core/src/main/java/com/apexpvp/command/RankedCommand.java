@@ -43,6 +43,10 @@ public class RankedCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (!CommandPermissions.require(player, "apexpvp.queue")) {
+            return true;
+        }
+
         // Direct alias support for /leavequeue
         if (label.equalsIgnoreCase("leavequeue")) {
             plugin.getQueueManager().leaveQueue(player);

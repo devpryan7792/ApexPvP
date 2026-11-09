@@ -128,32 +128,26 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                 plugin.getPartyManager().declinePartyDuel(player, leader);
             }
             case "split" -> {
-                Kit kit = null;
                 if (args.length > 1) {
-                    kit = plugin.getKitManager().getKit(args[1]);
-                }
-                if (kit == null) {
-                    kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
-                    if (kit == null) {
-                        TextUtil.sendPrefixed(player, "<red>No kits configured.");
+                    Kit kit = plugin.getKitManager().getKit(args[1]);
+                    if (kit != null) {
+                        plugin.getPartyArenaSelectGUI().open(player, com.apexpvp.ui.gui.PartyKitSelectGUI.PartyMatchType.SPLIT, kit);
                         return true;
                     }
+                    TextUtil.sendPrefixed(player, "<red>Kit '" + args[1] + "' not found. Opening kit selection...");
                 }
-                plugin.getPartyManager().splitParty(player, kit);
+                plugin.getPartyKitSelectGUI().open(player, com.apexpvp.ui.gui.PartyKitSelectGUI.PartyMatchType.SPLIT);
             }
             case "ffa" -> {
-                Kit kit = null;
                 if (args.length > 1) {
-                    kit = plugin.getKitManager().getKit(args[1]);
-                }
-                if (kit == null) {
-                    kit = plugin.getKitManager().getAllKits().stream().findFirst().orElse(null);
-                    if (kit == null) {
-                        TextUtil.sendPrefixed(player, "<red>No kits configured.");
+                    Kit kit = plugin.getKitManager().getKit(args[1]);
+                    if (kit != null) {
+                        plugin.getPartyArenaSelectGUI().open(player, com.apexpvp.ui.gui.PartyKitSelectGUI.PartyMatchType.FFA, kit);
                         return true;
                     }
+                    TextUtil.sendPrefixed(player, "<red>Kit '" + args[1] + "' not found. Opening kit selection...");
                 }
-                plugin.getPartyManager().startPartyFfa(player, kit);
+                plugin.getPartyKitSelectGUI().open(player, com.apexpvp.ui.gui.PartyKitSelectGUI.PartyMatchType.FFA);
             }
             case "info" -> {
                 Party party = plugin.getPartyManager().getParty(player);

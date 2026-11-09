@@ -43,6 +43,10 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (!CommandPermissions.require(player, "apexpvp.duel")) {
+            return true;
+        }
+
         if (args.length == 0 || args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("gui")) {
             plugin.getDuelsMenuGUI().open(player);
             return true;
@@ -158,13 +162,47 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             if (defaultKit == null && !plugin.getKitManager().getAllKits().isEmpty()) {
                 defaultKit = plugin.getKitManager().getAllKits().iterator().next();
             }
-            ArenaTemplate defaultArena = plugin.getArenaManager().getAllTemplates().isEmpty()
-                    ? null : plugin.getArenaManager().getAllTemplates().iterator().next();
+            ArenaTemplate defaultArena = plugin.getArenaManager().getAllTemplates().stream()
+                    .filter(ArenaTemplate::isEnabled)
+                    .findFirst().orElse(null);
             if (defaultArena == null || defaultKit == null) {
-                TextUtil.sendPrefixed(player, "<red>Cannot start item bet: No arenas or kits registered.");
+                TextUtil.sendPrefixed(player, "<red>Cannot start item bet: No enabled arenas or kits available.");
                 return true;
             }
             plugin.getItemBettingGUI().open(player, target, defaultKit, defaultArena);
+            return true;
+        }
+
+        // Own-inventory duel: /duel <target> own [stake]
+        if (args[1].equalsIgnoreCase("own") || args[1].equalsIgnoreCase("inventory")) {
+            Kit defaultKit = plugin.getKitManager().getKit("nodebuff");
+            if (defaultKit == null && !plugin.getKitManager().getAllKits().isEmpty()) {
+                defaultKit = plugin.getKitManager().getAllKits().iterator().next();
+            }
+            List<ArenaTemplate> arenas = plugin.getArenaManager().getAllTemplates().stream()
+                    .filter(ArenaTemplate::isEnabled)
+                    .toList();
+            if (defaultKit == null || arenas.isEmpty()) {
+                TextUtil.sendPrefixed(player, "<red>Cannot start an own-inventory duel: no enabled kits or arenas.");
+                return true;
+            }
+
+            double ownStake = 0.0;
+            if (args.length > 2) {
+                try {
+                    ownStake = Double.parseDouble(args[2]);
+                    if (!Double.isFinite(ownStake) || ownStake < 0.0) {
+                        TextUtil.sendPrefixed(player, "<red>Stake amount must be a non-negative finite number.");
+                        return true;
+                    }
+                } catch (NumberFormatException ignored) {
+                    TextUtil.sendPrefixed(player, "<red>Invalid stake amount.");
+                    return true;
+                }
+            }
+
+            ArenaTemplate arena = arenas.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(arenas.size()));
+            plugin.getDuelManager().sendChallenge(player, target, defaultKit, arena, ownStake, true);
             return true;
         }
 
@@ -215,13 +253,14 @@ public class DuelCommand implements CommandExecutor, TabCompleter {
             completions.add("preview");
             completions.add("menu");
             completions.add("toggle");
-            completions.add("privacy");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (!p.getName().equalsIgnoreCase(sender.getName())) {
                     completions.add(p.getName());
                 }
             }
         } else if (args.length == 2 && !args[0].equalsIgnoreCase("accept") && !args[0].equalsIgnoreCase("decline")) {
+            completions.add("own");
+            completions.add("item");
             for (Kit k : plugin.getKitManager().getAllKits()) {
                 completions.add(k.getId());
             }

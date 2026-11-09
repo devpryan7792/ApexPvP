@@ -4,22 +4,26 @@ import com.apexpvp.ApexPvPPlugin;
 import com.apexpvp.arena.ArenaInstance;
 import com.apexpvp.kit.Kit;
 import com.apexpvp.match.Match;
-import com.apexpvp.match.MatchParticipant;
 import com.apexpvp.profile.PlayerProfile;
 import com.apexpvp.profile.PlayerStats;
 import com.apexpvp.profile.Rank;
 import com.apexpvp.util.EloCalculator;
 import com.apexpvp.util.TextUtil;
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 1v1 Player Duel with optional currency stake escrow payout and physical item wagering.
@@ -29,7 +33,10 @@ public class DuelMatch extends Match {
     private final UUID player1Uuid;
     private final UUID player2Uuid;
     private final double stakeAmount;
-    private final List<ItemStack> wagerItems;
+    private final List<ItemStack> wagerItems = new ArrayList<>();
+    private final Map<UUID, List<ItemStack>> wagerItemsByOwner = new LinkedHashMap<>();
+    private final AtomicBoolean coinsSettled = new AtomicBoolean(false);
+    private final AtomicBoolean itemsSettled = new AtomicBoolean(false);
 
     public DuelMatch(@NotNull ApexPvPPlugin plugin,
                      @NotNull ArenaInstance arena,
@@ -48,15 +55,52 @@ public class DuelMatch extends Match {
                      double stakeAmount,
                      @NotNull List<ItemStack> wagerItems,
                      boolean ownInventory) {
+        this(plugin, arena, kit, player1, player2, stakeAmount, wagerItems, Collections.emptyList(), ownInventory);
+    }
+
+    /**
+     * Creates a duel with an ownership-aware physical item pot.
+     * Keeping each side's items separate is what makes abort refunds safe: an
+     * aborted match must never hand one player the other player's wager.
+     */
+    public DuelMatch(@NotNull ApexPvPPlugin plugin,
+                     @NotNull ArenaInstance arena,
+                     @NotNull Kit kit,
+                     @NotNull Player player1,
+                     @NotNull Player player2,
+                     double stakeAmount,
+                     @NotNull List<ItemStack> player1WagerItems,
+                     @NotNull List<ItemStack> player2WagerItems,
+                     boolean ownInventory) {
         super(plugin, arena, kit);
         this.player1Uuid = player1.getUniqueId();
         this.player2Uuid = player2.getUniqueId();
         this.stakeAmount = Math.max(0.0, stakeAmount);
-        this.wagerItems = new ArrayList<>(wagerItems);
         this.ownInventory = ownInventory;
+
+        addWagerItems(player1Uuid, player1WagerItems);
+        addWagerItems(player2Uuid, player2WagerItems);
 
         addParticipant(player1, 0); // Team 0
         addParticipant(player2, 1); // Team 1
+    }
+
+    private void addWagerItems(@NotNull UUID owner, @NotNull List<ItemStack> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        List<ItemStack> owned = new ArrayList<>(items.size());
+        for (ItemStack item : items) {
+            if (item == null || item.getType() == Material.AIR) {
+                continue;
+            }
+            ItemStack copy = item.clone();
+            owned.add(copy);
+            wagerItems.add(copy);
+        }
+        if (!owned.isEmpty()) {
+            wagerItemsByOwner.put(owner, owned);
+        }
     }
 
     @Override
@@ -145,8 +189,8 @@ public class DuelMatch extends Match {
             plugin.getProfileManager().saveProfile(loserProfile);
         }
 
-        // Process Escrow Stake Payout
-        if (stakeAmount > 0) {
+        // Process Escrow Stake Payout (settled exactly once)
+        if (stakeAmount > 0 && coinsSettled.compareAndSet(false, true)) {
             double taxPercent = plugin.getConfig().getDouble("duels.betting.server-tax-percent", 5.0);
             plugin.getEscrowManager().distributePayout(matchId, Bukkit.getOfflinePlayer(winnerUuid), taxPercent);
             double totalPot = stakeAmount * 2.0;
@@ -155,17 +199,9 @@ public class DuelMatch extends Match {
             broadcast("<gold>" + winnerName + "</gold> won the wager of <yellow>" + netWinnings + "</yellow> coins! (Tax: " + taxDeduction + ")");
         }
 
-        // Process Physical Item Wager Pot
-        if (winner != null && !wagerItems.isEmpty()) {
-            for (ItemStack item : wagerItems) {
-                var leftover = winner.getInventory().addItem(item);
-                if (!leftover.isEmpty()) {
-                    for (ItemStack rem : leftover.values()) {
-                        winner.getWorld().dropItemNaturally(winner.getLocation(), rem);
-                    }
-                }
-            }
-            broadcast("<gold>" + winnerName + "</gold> claimed the wager pot of <yellow>" + wagerItems.size() + "</yellow> items!");
+        // Process Physical Item Wager Pot (settled exactly once; cleanup must not refund it)
+        if (!wagerItems.isEmpty()) {
+            settleWagerPot(winner, winnerName);
         }
 
         // Record to audit database with accurate eloDelta
@@ -177,29 +213,86 @@ public class DuelMatch extends Match {
         );
     }
 
-    private void refundStakes() {
-        if (stakeAmount > 0) {
+    /**
+     * Pays the item pot to the winner. Package-visible for regression tests.
+     * Idempotent: a second call (e.g. from cleanup) does nothing.
+     */
+    void settleWagerPot(@Nullable Player winner, @NotNull String winnerName) {
+        if (!itemsSettled.compareAndSet(false, true)) {
+            return;
+        }
+
+        if (winner != null && winner.isOnline()) {
+            for (ItemStack item : wagerItems) {
+                giveOrDrop(winner, item);
+            }
+            if (!wagerItems.isEmpty()) {
+                broadcast("<gold>" + winnerName + "</gold> claimed the wager pot of <yellow>" + wagerItems.size() + "</yellow> items!");
+            }
+        } else {
+            // Winner is offline: return each item to its original owner instead of
+            // handing the whole pot to player 1 or deleting it.
+            refundWagerItemsToOwners();
+        }
+
+        wagerItems.clear();
+        wagerItemsByOwner.clear();
+    }
+
+    /**
+     * Refunds only the parts of the match that have not already been settled.
+     * Package-visible for regression tests.
+     */
+    void refundStakes() {
+        if (coinsSettled.compareAndSet(false, true) && stakeAmount > 0) {
             plugin.getEscrowManager().refund(matchId);
         }
-        if (!wagerItems.isEmpty()) {
-            Player p1 = Bukkit.getPlayer(player1Uuid);
-            Player p2 = Bukkit.getPlayer(player2Uuid);
-            for (ItemStack item : wagerItems) {
-                if (p1 != null && p1.isOnline()) {
-                    var rem = p1.getInventory().addItem(item);
-                    for (ItemStack r : rem.values()) p1.getWorld().dropItemNaturally(p1.getLocation(), r);
-                } else if (p2 != null && p2.isOnline()) {
-                    var rem = p2.getInventory().addItem(item);
-                    for (ItemStack r : rem.values()) p2.getWorld().dropItemNaturally(p2.getLocation(), r);
+        if (itemsSettled.compareAndSet(false, true)) {
+            refundWagerItemsToOwners();
+            wagerItems.clear();
+            wagerItemsByOwner.clear();
+        }
+    }
+
+    private void refundWagerItemsToOwners() {
+        for (Map.Entry<UUID, List<ItemStack>> entry : wagerItemsByOwner.entrySet()) {
+            Player owner = plugin.getServer() != null ? plugin.getServer().getPlayer(entry.getKey()) : null;
+            for (ItemStack item : entry.getValue()) {
+                if (owner != null && owner.isOnline()) {
+                    giveOrDrop(owner, item);
+                } else {
+                    dropAtArena(item);
                 }
             }
-            wagerItems.clear();
         }
+    }
+
+    private void giveOrDrop(@NotNull Player player, @NotNull ItemStack item) {
+        var leftover = player.getInventory().addItem(item);
+        if (!leftover.isEmpty()) {
+            for (ItemStack rem : leftover.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), rem);
+            }
+        }
+    }
+
+    private void dropAtArena(@NotNull ItemStack item) {
+        try {
+            Location loc = arena.getSpectatorSpawn();
+            if (loc != null && loc.getWorld() != null) {
+                loc.getWorld().dropItemNaturally(loc, item);
+                return;
+            }
+        } catch (Throwable ignored) {
+            // Fall through to the warning below.
+        }
+        plugin.getLogger().warning("Could not return wager item " + item.getType()
+                + ": owner is offline and no arena drop location is available.");
     }
 
     @Override
     public void cleanup() {
-        // Guarantee escrow refund if match is cleaned up without payout
+        // Idempotent: refunds only what processMatchResults() did not already settle.
         refundStakes();
         super.cleanup();
     }

@@ -15,7 +15,7 @@ import com.apexpvp.command.DuelCommand;
 import com.apexpvp.command.FfaCommand;
 import com.apexpvp.command.KitCommand;
 import com.apexpvp.command.LeaderboardCommand;
-import com.apexpvp.command.PartyCommand;
+import com.apexpvp.command.TeamCommand;
 import com.apexpvp.command.PracticeCommand;
 import com.apexpvp.command.QueueCommand;
 import com.apexpvp.command.RankedCommand;
@@ -39,9 +39,12 @@ import com.apexpvp.ui.gui.DuelsMenuGUI;
 import com.apexpvp.ui.gui.RankedMenuGUI;
 import com.apexpvp.ui.gui.admin.AdminEditorGUI;
 import com.apexpvp.ui.gui.admin.AdminArenaListGUI;
+import com.apexpvp.ui.gui.admin.AdminKitEditorGUI;
 import com.apexpvp.ui.gui.admin.ArenaDetailEditorGUI;
 import com.apexpvp.ui.gui.PartyGUI;
 import com.apexpvp.ui.gui.PartyInviteGUI;
+import com.apexpvp.ui.gui.PartyKitSelectGUI;
+import com.apexpvp.ui.gui.PartyArenaSelectGUI;
 import com.apexpvp.ui.gui.ItemBettingGUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -83,9 +86,12 @@ public class ApexPvPPlugin extends JavaPlugin {
     private RankedMenuGUI rankedMenuGUI;
     private AdminEditorGUI adminEditorGUI;
     private AdminArenaListGUI adminArenaListGUI;
+    private AdminKitEditorGUI adminKitEditorGUI;
     private ArenaDetailEditorGUI arenaDetailEditorGUI;
     private PartyGUI partyGUI;
     private PartyInviteGUI partyInviteGUI;
+    private PartyKitSelectGUI partyKitSelectGUI;
+    private PartyArenaSelectGUI partyArenaSelectGUI;
     private ItemBettingGUI itemBettingGUI;
     private LobbyBossBarManager lobbyBossBarManager;
 
@@ -99,16 +105,7 @@ public class ApexPvPPlugin extends JavaPlugin {
 
         // 1. Save default configuration files
         saveDefaultConfig();
-        java.io.File messagesFile = new java.io.File(getDataFolder(), "messages.yml");
-        if (!messagesFile.exists()) {
-            saveResource("messages.yml", false);
-        }
-
-        // Load custom prefix from messages if present
-        String prefix = getConfig().getString("prefix");
-        if (prefix != null) {
-            TextUtil.setPrefix(prefix);
-        }
+        reloadMessages();
 
         // 2. Initialize Database Layer
         try {
@@ -149,12 +146,18 @@ public class ApexPvPPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(adminEditorGUI, this);
         this.adminArenaListGUI = new AdminArenaListGUI(this);
         getServer().getPluginManager().registerEvents(adminArenaListGUI, this);
+        this.adminKitEditorGUI = new AdminKitEditorGUI(this);
+        getServer().getPluginManager().registerEvents(adminKitEditorGUI, this);
         this.arenaDetailEditorGUI = new ArenaDetailEditorGUI(this);
         getServer().getPluginManager().registerEvents(arenaDetailEditorGUI, this);
         this.partyGUI = new PartyGUI(this);
         getServer().getPluginManager().registerEvents(partyGUI, this);
         this.partyInviteGUI = new PartyInviteGUI(this);
         getServer().getPluginManager().registerEvents(partyInviteGUI, this);
+        this.partyKitSelectGUI = new PartyKitSelectGUI(this);
+        getServer().getPluginManager().registerEvents(partyKitSelectGUI, this);
+        this.partyArenaSelectGUI = new PartyArenaSelectGUI(this);
+        getServer().getPluginManager().registerEvents(partyArenaSelectGUI, this);
         this.itemBettingGUI = new ItemBettingGUI(this);
         getServer().getPluginManager().registerEvents(itemBettingGUI, this);
 
@@ -232,6 +235,11 @@ public class ApexPvPPlugin extends JavaPlugin {
             escrowManager.shutdown();
         }
 
+        // 5. Cancel team auto-dissolve timers
+        if (partyManager != null) {
+            partyManager.shutdown();
+        }
+
         // 5. Flush all pending dirty player profiles synchronously
         if (profileManager != null) {
             profileManager.saveAllSync();
@@ -302,10 +310,10 @@ public class ApexPvPPlugin extends JavaPlugin {
             getCommand("leavequeue").setExecutor(rankedCmd);
             getCommand("leavequeue").setTabCompleter(rankedCmd);
         }
-        if (getCommand("party") != null) {
-            PartyCommand partyCmd = new PartyCommand(this);
-            getCommand("party").setExecutor(partyCmd);
-            getCommand("party").setTabCompleter(partyCmd);
+        TeamCommand teamCmd = new TeamCommand(this);
+        if (getCommand("team") != null) {
+            getCommand("team").setExecutor(teamCmd);
+            getCommand("team").setTabCompleter(teamCmd);
         }
         if (getCommand("practice") != null) {
             PracticeCommand practiceCmd = new PracticeCommand(this);
@@ -355,6 +363,49 @@ public class ApexPvPPlugin extends JavaPlugin {
     @NotNull
     public static ApexPvPPlugin getInstance() {
         return instance;
+    }
+
+    /**
+     * Reloads every runtime-editable resource in a safe order:
+     * config, message prefix, kits, arena templates, queue tuning, and caches.
+     * Database pools are intentionally left alone.
+     */
+    public void reloadAllConfigs() {
+        reloadConfig();
+        reloadMessages();
+
+        if (kitManager != null) {
+            kitManager.reload();
+        }
+        if (arenaManager != null) {
+            arenaManager.reloadTemplates();
+        }
+        if (queueManager != null) {
+            queueManager.reloadConfig();
+        }
+        if (leaderboardManager != null) {
+            leaderboardManager.invalidateCache();
+        }
+    }
+
+    /**
+     * Re-reads {@code messages.yml} and applies the MiniMessage prefix.
+     */
+    public void reloadMessages() {
+        java.io.File messagesFile = new java.io.File(getDataFolder(), "messages.yml");
+        if (!messagesFile.exists()) {
+            saveResource("messages.yml", false);
+        }
+
+        org.bukkit.configuration.file.FileConfiguration messages =
+                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(messagesFile);
+        String prefix = messages.getString("prefix");
+        if (prefix == null || prefix.isBlank()) {
+            prefix = getConfig().getString("prefix");
+        }
+        if (prefix != null && !prefix.isBlank()) {
+            TextUtil.setPrefix(prefix);
+        }
     }
 
     @NotNull
@@ -485,6 +536,11 @@ public class ApexPvPPlugin extends JavaPlugin {
     }
 
     @NotNull
+    public AdminKitEditorGUI getAdminKitEditorGUI() {
+        return adminKitEditorGUI;
+    }
+
+    @NotNull
     public ArenaDetailEditorGUI getArenaDetailEditorGUI() {
         return arenaDetailEditorGUI;
     }
@@ -497,6 +553,16 @@ public class ApexPvPPlugin extends JavaPlugin {
     @NotNull
     public PartyInviteGUI getPartyInviteGUI() {
         return partyInviteGUI;
+    }
+
+    @NotNull
+    public PartyKitSelectGUI getPartyKitSelectGUI() {
+        return partyKitSelectGUI;
+    }
+
+    @NotNull
+    public PartyArenaSelectGUI getPartyArenaSelectGUI() {
+        return partyArenaSelectGUI;
     }
 
     @NotNull

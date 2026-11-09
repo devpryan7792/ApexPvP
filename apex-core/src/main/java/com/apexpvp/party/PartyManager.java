@@ -14,6 +14,8 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import org.bukkit.scheduler.BukkitTask;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,6 +45,7 @@ public class PartyManager {
     private final Map<UUID, Party> partiesByPlayer = new ConcurrentHashMap<>();
     private final Map<UUID, UUID> pendingInvites = new ConcurrentHashMap<>(); // targetUuid -> leaderUuid
     private final Map<UUID, PartyChallenge> pendingPartyChallenges = new ConcurrentHashMap<>(); // targetLeaderUuid -> challenge
+    private final Map<UUID, BukkitTask> dissolveTimers = new ConcurrentHashMap<>(); // leaderUuid -> auto-disband task
 
     public PartyManager(@NotNull ApexPvPPlugin plugin) {
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
@@ -67,7 +70,9 @@ public class PartyManager {
 
         Party party = new Party(leader, maxPartyMembers);
         partiesByPlayer.put(leader.getUniqueId(), party);
-        TextUtil.sendPrefixed(leader, "<green>Party created successfully! Invite players using <yellow>/party invite <player></yellow>.");
+        TextUtil.sendPrefixed(leader, "<green>Team created! Invite players with <yellow>/team invite <player></yellow>.");
+        // Start dissolve timer — leader is alone until someone joins
+        scheduleDissolveIfAlone(party);
         return true;
     }
 
@@ -87,8 +92,8 @@ public class PartyManager {
         TextUtil.sendPrefixed(leader, "<green>Invited <gold><target></gold> to your party.", Placeholder.parsed("target", target.getName()));
 
         TextUtil.sendPrefixed(target, "<gradient:#FFAA00:#FF5555><bold>PARTY INVITE!</bold></gradient> <gold>" + leader.getName() +
-                "</gold> invited you to join their party!\n" +
-                "<click:run_command:'/party accept " + leader.getName() + "'><hover:show_text:'<green>Click to accept party invite'><green><bold>[ACCEPT]</bold></green></hover></click>");
+                "</gold> invited you to join their team!\n" +
+                "<click:run_command:'/team join " + leader.getName() + "'><hover:show_text:'<green>Click to accept party invite'><green><bold>[ACCEPT]</bold></green></hover></click>");
         return true;
     }
 
@@ -109,7 +114,9 @@ public class PartyManager {
         if (party.addMember(player.getUniqueId())) {
             pendingInvites.remove(player.getUniqueId());
             partiesByPlayer.put(player.getUniqueId(), party);
-            party.broadcast("<gold>" + player.getName() + "</gold> <green>joined the party!");
+            party.broadcast("<gold>" + player.getName() + "</gold> <green>joined the team!");
+            // Cancel dissolve timer — party now has ≥2 members
+            scheduleDissolveIfAlone(party);
             return true;
         } else {
             TextUtil.sendPrefixed(player, "<red>That party is currently full.");
@@ -118,36 +125,90 @@ public class PartyManager {
     }
 
     public boolean leaveParty(@NotNull Player player) {
-        Party party = partiesByPlayer.remove(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        Party party = partiesByPlayer.remove(uuid);
         if (party == null) {
             TextUtil.sendPrefixed(player, "<red>You are not in a party.");
             return false;
         }
 
-        party.removeMember(player.getUniqueId());
+        party.removeMember(uuid);
         TextUtil.sendPrefixed(player, "<yellow>You left the party.");
 
-        if (party.isLeader(player.getUniqueId())) {
+        if (party.isLeader(uuid)) {
+            cancelDissolveTimer(uuid);
             if (party.getSize() > 0) {
                 // Pass leadership to next member
                 UUID nextLeader = party.getMembers().iterator().next();
                 party.setLeader(nextLeader);
                 Player newL = Bukkit.getPlayer(nextLeader);
                 if (newL != null) {
-                    party.broadcast("<gold>" + newL.getName() + "</gold> is now the party leader.");
+                    party.broadcast("<gold>" + newL.getName() + "</gold> is now the team leader.");
                 }
+                // Schedule dissolve if the new leader is now alone
+                scheduleDissolveIfAlone(party);
             }
         } else {
-            party.broadcast("<gold>" + player.getName() + "</gold> left the party.");
+            party.broadcast("<gold>" + player.getName() + "</gold> left the team.");
+            // Schedule dissolve in case the leader is now alone
+            scheduleDissolveIfAlone(party);
         }
-        if (plugin.getQueueManager().isInQueue(player.getUniqueId())) {
+
+        clearPendingState(uuid);
+
+        if (plugin.getQueueManager().isInQueue(uuid)) {
             plugin.getQueueManager().leaveQueue(player);
         }
         return true;
     }
 
+    /**
+     * Fully removes a player from party state without requiring them to be online.
+     *
+     * <p>Used for disconnects and kicks: clears membership, transfers leadership,
+     * cancels dissolve timers, drops invites/challenges in both directions, and
+     * exits any queue ticket they belong to.</p>
+     */
     public void unregisterPlayerFromParty(@NotNull UUID uuid) {
-        partiesByPlayer.remove(uuid);
+        Party party = partiesByPlayer.remove(uuid);
+        if (party != null) {
+            boolean wasLeader = party.isLeader(uuid);
+            party.removeMember(uuid);
+            if (wasLeader) {
+                cancelDissolveTimer(uuid);
+                if (party.getSize() > 0) {
+                    UUID nextLeader = party.getMembers().iterator().next();
+                    party.setLeader(nextLeader);
+                    scheduleDissolveIfAlone(party);
+                }
+            } else {
+                scheduleDissolveIfAlone(party);
+            }
+        }
+
+        cancelDissolveTimer(uuid);
+        clearPendingState(uuid);
+
+        if (plugin.getQueueManager() != null && plugin.getQueueManager().isInQueue(uuid)) {
+            Player online = Bukkit.getPlayer(uuid);
+            if (online != null && online.isOnline()) {
+                plugin.getQueueManager().leaveQueue(online);
+            }
+        }
+    }
+
+    private void clearPendingState(@NotNull UUID uuid) {
+        pendingInvites.remove(uuid);
+        pendingInvites.entrySet().removeIf(entry -> entry.getValue().equals(uuid));
+        pendingPartyChallenges.remove(uuid);
+        pendingPartyChallenges.entrySet().removeIf(entry -> entry.getValue().senderLeader().equals(uuid));
+    }
+
+    private void cancelDissolveTimer(@NotNull UUID leaderUuid) {
+        BukkitTask task = dissolveTimers.remove(leaderUuid);
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     public boolean disbandParty(@NotNull Player leader) {
@@ -164,6 +225,14 @@ public class PartyManager {
         party.broadcast("<red>The party has been disbanded by the leader.");
         for (UUID member : party.getMembers()) {
             partiesByPlayer.remove(member);
+            cancelDissolveTimer(member);
+            clearPendingState(member);
+            if (plugin.getQueueManager() != null && plugin.getQueueManager().isInQueue(member)) {
+                Player online = Bukkit.getPlayer(member);
+                if (online != null && online.isOnline()) {
+                    plugin.getQueueManager().leaveQueue(online);
+                }
+            }
         }
         return true;
     }
@@ -172,6 +241,13 @@ public class PartyManager {
      * Splits party roster into two balanced teams (1v1, 2v2, 3v3, or 4v4) and launches an internal scrimmage.
      */
     public boolean splitParty(@NotNull Player leader, @NotNull Kit kit) {
+        return splitParty(leader, kit, null);
+    }
+
+    /**
+     * Splits party roster into two balanced teams and launches a scrimmage in the selected arena template.
+     */
+    public boolean splitParty(@NotNull Player leader, @NotNull Kit kit, @Nullable ArenaTemplate customTemplate) {
         Party party = partiesByPlayer.get(leader.getUniqueId());
         if (party == null || !party.isLeader(leader.getUniqueId())) {
             TextUtil.sendPrefixed(leader, "<red>Only the party leader can start a Party Split.");
@@ -211,9 +287,17 @@ public class PartyManager {
             return false;
         }
 
-        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
+        ArenaInstance arenaInstance = null;
+        if (customTemplate != null && customTemplate.isEnabled()) {
+            arenaInstance = plugin.getArenaManager().getAvailableInstance(customTemplate);
+        }
         if (arenaInstance == null) {
-            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
+        }
+        if (arenaInstance == null) {
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream()
+                    .filter(ArenaTemplate::isEnabled)
+                    .findFirst().orElse(null);
             if (template != null) {
                 arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
             }
@@ -244,6 +328,10 @@ public class PartyManager {
     }
 
     public boolean startPartyFfa(@NotNull Player leader, @NotNull Kit kit) {
+        return startPartyFfa(leader, kit, null);
+    }
+
+    public boolean startPartyFfa(@NotNull Player leader, @NotNull Kit kit, @Nullable ArenaTemplate customTemplate) {
         Party party = partiesByPlayer.get(leader.getUniqueId());
         if (party == null || !party.isLeader(leader.getUniqueId())) {
             TextUtil.sendPrefixed(leader, "<red>Only the party leader can start a Party Free-For-All!");
@@ -278,9 +366,17 @@ public class PartyManager {
             return false;
         }
 
-        ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
+        ArenaInstance arenaInstance = null;
+        if (customTemplate != null && customTemplate.isEnabled()) {
+            arenaInstance = plugin.getArenaManager().getAvailableInstance(customTemplate);
+        }
         if (arenaInstance == null) {
-            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
+        }
+        if (arenaInstance == null) {
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream()
+                    .filter(ArenaTemplate::isEnabled)
+                    .findFirst().orElse(null);
             if (template != null) {
                 arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
             }
@@ -342,7 +438,9 @@ public class PartyManager {
 
         ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kit.getId());
         if (arenaInstance == null) {
-            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream()
+                    .filter(ArenaTemplate::isEnabled)
+                    .findFirst().orElse(null);
             if (template != null) {
                 arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
             }
@@ -432,8 +530,8 @@ public class PartyManager {
 
         TextUtil.sendPrefixed(targetLeader, "<gradient:#FFAA00:#FF5555><bold>PARTY DUEL CHALLENGE!</bold></gradient> Team <gold>" + senderLeader.getName() +
                 "</gold> challenged your party to a <yellow>" + modeTag + " " + kit.getDisplayName() + "</yellow> duel!\n" +
-                "<click:run_command:'/party accept-duel " + senderLeader.getName() + "'><hover:show_text:'<green>Click to accept party duel'><green><bold>[ACCEPT DUEL]</bold></green></hover></click> " +
-                "<click:run_command:'/party decline-duel " + senderLeader.getName() + "'><hover:show_text:'<red>Click to decline party duel'><red><bold>[DECLINE]</bold></red></hover></click>");
+                "<click:run_command:'/team join " + senderLeader.getName() + "'><hover:show_text:'<green>Click to accept party duel'><green><bold>[ACCEPT DUEL]</bold></green></hover></click> " +
+                "<click:run_command:'/team duel decline " + senderLeader.getName() + "'><hover:show_text:'<red>Click to decline party duel'><red><bold>[DECLINE]</bold></red></hover></click>");
 
         return true;
     }
@@ -495,7 +593,9 @@ public class PartyManager {
 
         ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(challenge.kit().getId());
         if (arenaInstance == null) {
-            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream().findFirst().orElse(null);
+            ArenaTemplate template = plugin.getArenaManager().getAllTemplates().stream()
+                    .filter(ArenaTemplate::isEnabled)
+                    .findFirst().orElse(null);
             if (template != null) {
                 arenaInstance = plugin.getArenaManager().getAvailableInstance(template);
             }
@@ -526,5 +626,74 @@ public class PartyManager {
         }
         TextUtil.sendPrefixed(targetLeader, "<red>No pending party duel to decline.");
         return false;
+    }
+
+    /**
+     * Unified join: accepts a pending party invite OR a pending party duel challenge from {@code leader}.
+     * Called by /team join &lt;leader&gt;.
+     */
+    public boolean joinTeam(@NotNull Player player, @NotNull Player leader) {
+        // Check party invite first
+        UUID expectedLeader = pendingInvites.get(player.getUniqueId());
+        if (expectedLeader != null && expectedLeader.equals(leader.getUniqueId())) {
+            return acceptInvite(player, leader);
+        }
+        // Check party duel challenge (player must be a party leader themselves)
+        PartyChallenge challenge = pendingPartyChallenges.get(player.getUniqueId());
+        if (challenge != null && challenge.senderLeader().equals(leader.getUniqueId())) {
+            return acceptPartyDuel(player, leader);
+        }
+        TextUtil.sendPrefixed(player, "<red>You have no pending team invite or duel challenge from <gold>" + leader.getName() + "</gold>.");
+        return false;
+    }
+
+    /**
+     * Schedules auto-dissolve of the team if it has fewer than 2 members,
+     * or cancels an existing dissolve timer if the team is healthy again.
+     */
+    private void scheduleDissolveIfAlone(@NotNull Party party) {
+        UUID leaderUuid = party.getLeader();
+        if (party.getSize() <= 1) {
+            // Only schedule if no timer is already running for this leader
+            if (!dissolveTimers.containsKey(leaderUuid)) {
+                if (Bukkit.getServer() != null && Bukkit.getScheduler() != null) {
+                    try {
+                        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            dissolveTimers.remove(leaderUuid);
+                            Party p = partiesByPlayer.get(leaderUuid);
+                            if (p != null && p.getSize() <= 1) {
+                                // Auto-disband: remove all members from map
+                                for (UUID m : p.getMembers()) {
+                                    partiesByPlayer.remove(m);
+                                }
+                                Player leader = Bukkit.getPlayer(leaderUuid);
+                                if (leader != null) {
+                                    TextUtil.sendPrefixed(leader,
+                                            "<yellow>Your team was automatically disbanded because you were the only member for 5 minutes.");
+                                }
+                            }
+                        }, 20L * 60 * 5); // 5 minutes = 6000 ticks
+                        if (task != null) {
+                            dissolveTimers.put(leaderUuid, task);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        } else {
+            // Cancel pending dissolve — team has ≥2 members again
+            BukkitTask existing = dissolveTimers.remove(leaderUuid);
+            if (existing != null) {
+                existing.cancel();
+            }
+        }
+    }
+
+    /**
+     * Cancels all pending auto-dissolve timers. Call on plugin shutdown.
+     */
+    public void shutdown() {
+        dissolveTimers.values().forEach(BukkitTask::cancel);
+        dissolveTimers.clear();
     }
 }

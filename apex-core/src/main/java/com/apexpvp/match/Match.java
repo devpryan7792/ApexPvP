@@ -420,6 +420,17 @@ public abstract class Match {
         }
         broadcast("<red>" + player.getName() + " disconnected and forfeited the match.");
 
+        // Detach the quitter immediately. Otherwise they stay registered to this match while
+        // the arena is still running, and rejoining puts them back inside the arena dimension.
+        PlayerRestoreSnapshot snapshot = snapshots.remove(player.getUniqueId());
+        if (snapshot != null && plugin.getMatchManager() != null) {
+            plugin.getMatchManager().savePendingRestore(player.getUniqueId(), snapshot);
+        }
+        participants.remove(player.getUniqueId());
+        if (plugin.getMatchManager() != null) {
+            plugin.getMatchManager().unregisterParticipant(player.getUniqueId());
+        }
+
         if (state.get() == MatchState.ACTIVE || state.get() == MatchState.COUNTDOWN) {
             checkWinCondition();
         }
@@ -640,9 +651,16 @@ public abstract class Match {
                     } catch (Throwable ignored) {
                     }
                     Location lobby = entry.getValue().getReturnLocation();
+                    if (arena.getTemplate().isTeleportToLobby()
+                            || (lobby.getWorld() != null && lobby.getWorld().getName().equalsIgnoreCase("apex_arenas"))) {
+                        org.bukkit.World defaultWorld = Bukkit.getWorlds().get(0);
+                        if (defaultWorld != null) {
+                            lobby = defaultWorld.getSpawnLocation();
+                        }
+                    }
                     p.teleport(lobby);
                 } else {
-                    entry.getValue().restore(p);
+                    entry.getValue().restore(p, arena.getTemplate().isTeleportToLobby());
                 }
                 plugin.getMatchManager().unregisterParticipant(p.getUniqueId());
                 if (plugin.getLobbyBossBarManager() != null) {
@@ -657,11 +675,9 @@ public abstract class Match {
         }
         snapshots.clear();
 
-        // Trigger tick-budgeted zero-lag rollback on arena instance
-        int blocksPerTick = (plugin.getConfig() != null)
-                ? plugin.getConfig().getInt("arenas.rollback.blocks-per-tick", 250)
-                : 250;
-        arena.startRollback(plugin, blocksPerTick, () -> {
+        // Trigger tick-budgeted zero-lag rollback on arena instance, unless the template
+        // explicitly disables regeneration.
+        Runnable onArenaReleased = () -> {
             for (MatchParticipant part : participants.values()) {
                 Player p = Bukkit.getPlayer(part.getUuid());
                 if (p == null || !p.isOnline()) {
@@ -671,7 +687,15 @@ public abstract class Match {
                 }
             }
             plugin.getMatchManager().unregisterMatch(matchId);
-        });
+        };
+        if (arena.getTemplate().isRegeneration()) {
+            int blocksPerTick = (plugin.getConfig() != null)
+                    ? plugin.getConfig().getInt("arenas.rollback.blocks-per-tick", 250)
+                    : 250;
+            arena.startRollback(plugin, blocksPerTick, onArenaReleased);
+        } else {
+            arena.finishWithoutRollback(plugin, onArenaReleased);
+        }
     }
 
     public void broadcast(@NotNull String miniMessage) {

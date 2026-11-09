@@ -124,8 +124,13 @@ public class MatchListener implements Listener {
             return;
         }
 
-        // Handle lethal damage: Cancel vanilla death screen, trigger match outcome
+        // Handle lethal damage: Cancel vanilla death screen, trigger match outcome.
+        // Exception: a totem in either hand must be allowed to fire first, otherwise
+        // the match listener would "kill" the player before vanilla resurrects them.
         if (victim.getHealth() - event.getFinalDamage() <= 0.0) {
+            if (hasTotemInHand(victim)) {
+                return;
+            }
             event.setCancelled(true);
             victim.setHealth(20.0);
 
@@ -139,6 +144,18 @@ public class MatchListener implements Listener {
             }
             match.onPlayerDeath(victim, killer);
         }
+    }
+
+    /**
+     * Vanilla only consumes a totem of undying from the main hand or offhand.
+     */
+    private boolean hasTotemInHand(@NotNull Player player) {
+        ItemStack main = player.getInventory().getItemInMainHand();
+        if (main != null && main.getType() == Material.TOTEM_OF_UNDYING) {
+            return true;
+        }
+        ItemStack off = player.getInventory().getItemInOffHand();
+        return off != null && off.getType() == Material.TOTEM_OF_UNDYING;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

@@ -36,15 +36,25 @@ public class QueueManager implements Runnable {
     private final Map<UUID, QueueTicket> playerTickets = new ConcurrentHashMap<>();
     private final Map<String, List<UUID>> ffaQueues = new ConcurrentHashMap<>();
     private final Map<UUID, String> ffaQueuePlayers = new ConcurrentHashMap<>();
+    /** Exact amount each queued player was charged, so refunds happen once at the paid price. */
+    private final Map<UUID, Double> paidEntryFees = new ConcurrentHashMap<>();
 
-    private final int initialSearchRange;
-    private final int expansionStep;
-    private final long expansionIntervalMillis;
+    private volatile int initialSearchRange;
+    private volatile int expansionStep;
+    private volatile long expansionIntervalMillis;
 
     private BukkitTask tickerTask;
 
     public QueueManager(@NotNull ApexPvPPlugin plugin) {
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
+        reloadConfig();
+    }
+
+    /**
+     * Re-reads queue tuning values. Existing tickets keep their current range and
+     * pick up the new expansion step/interval on their next tick.
+     */
+    public void reloadConfig() {
         this.initialSearchRange = plugin.getConfig().getInt("ranked.queue.initial-search-range", 50);
         this.expansionStep = plugin.getConfig().getInt("ranked.queue.range-expansion-step", 25);
         this.expansionIntervalMillis = plugin.getConfig().getInt("ranked.queue.expansion-interval-seconds", 5) * 1000L;
@@ -60,10 +70,20 @@ public class QueueManager implements Runnable {
             tickerTask.cancel();
             tickerTask = null;
         }
+        // Refund everyone still waiting so a restart does not eat entry fees.
+        for (List<QueueTicket> tickets : queues.values()) {
+            for (QueueTicket ticket : tickets) {
+                refundTicketFees(ticket);
+            }
+        }
+        for (UUID uuid : new ArrayList<>(ffaQueuePlayers.keySet())) {
+            refundFee(uuid);
+        }
         queues.clear();
         playerTickets.clear();
         ffaQueues.clear();
         ffaQueuePlayers.clear();
+        paidEntryFees.clear();
     }
 
     public boolean queuePlayer(@NotNull Player player, @NotNull Kit kit) {
@@ -75,7 +95,7 @@ public class QueueManager implements Runnable {
             return false;
         }
 
-        if (playerTickets.containsKey(uuid)) {
+        if (playerTickets.containsKey(uuid) || ffaQueuePlayers.containsKey(uuid)) {
             TextUtil.sendPrefixed(player, "<red>You are already in a matchmaking queue!");
             return false;
         }
@@ -102,6 +122,7 @@ public class QueueManager implements Runnable {
                     TextUtil.sendPrefixed(player, "<red>Failed to deduct entry fee.");
                     return false;
                 }
+                recordFee(uuid, entryFee);
             }
         }
 
@@ -143,7 +164,7 @@ public class QueueManager implements Runnable {
                 TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " is already in an active match!");
                 return false;
             }
-            if (playerTickets.containsKey(uuid)) {
+            if (playerTickets.containsKey(uuid) || ffaQueuePlayers.containsKey(uuid)) {
                 TextUtil.sendPrefixed(leader, "<red>" + p.getName() + " is already in a matchmaking queue!");
                 return false;
             }
@@ -168,8 +189,19 @@ public class QueueManager implements Runnable {
                     return false;
                 }
             }
+            // Withdraw as a transaction: if any member fails, refund everyone already charged.
+            List<Player> charged = new ArrayList<>();
             for (Player p : members) {
-                economy.withdrawPlayer(p, entryFee);
+                var res = economy.withdrawPlayer(p, entryFee);
+                if (res == null || !res.transactionSuccess()) {
+                    for (Player refunded : charged) {
+                        economy.depositPlayer(refunded, entryFee);
+                    }
+                    TextUtil.sendPrefixed(leader, "<red>Failed to deduct the entry fee from " + p.getName() + ". No one was charged.");
+                    return false;
+                }
+                charged.add(p);
+                recordFee(p.getUniqueId(), entryFee);
             }
         }
 
@@ -198,19 +230,8 @@ public class QueueManager implements Runnable {
 
         removeTicket(ticket);
 
-        boolean economyEnabled = plugin.getConfig().getBoolean("ranked.economy.enabled", true);
-        double entryFee = plugin.getConfig().getDouble("ranked.economy.entry-fee", 25.0);
-        Economy economy = plugin.getEconomy();
-
         if (ticket.isTeamQueue()) {
-            if (economyEnabled && entryFee > 0.0 && economy != null) {
-                for (UUID u : ticket.getPartyMembers()) {
-                    Player p = Bukkit.getPlayer(u);
-                    if (p != null && p.isOnline()) {
-                        economy.depositPlayer(p, entryFee);
-                    }
-                }
-            }
+            refundTicketFees(ticket);
             for (UUID u : ticket.getPartyMembers()) {
                 Player p = Bukkit.getPlayer(u);
                 if (p != null && p.isOnline()) {
@@ -218,9 +239,7 @@ public class QueueManager implements Runnable {
                 }
             }
         } else {
-            if (economyEnabled && entryFee > 0.0 && economy != null) {
-                economy.depositPlayer(player, entryFee);
-            }
+            refundFee(player);
             TextUtil.sendPrefixed(player, "<yellow>You left the matchmaking queue. Entry fee refunded.");
         }
 
@@ -255,7 +274,12 @@ public class QueueManager implements Runnable {
                 TextUtil.sendPrefixed(player, "<red>You do not have enough coins (" + entryFee + ") for the FFA entry fee!");
                 return false;
             }
-            economy.withdrawPlayer(player, entryFee);
+            var res = economy.withdrawPlayer(player, entryFee);
+            if (res == null || !res.transactionSuccess()) {
+                TextUtil.sendPrefixed(player, "<red>Failed to deduct the FFA entry fee.");
+                return false;
+            }
+            recordFee(uuid, entryFee);
         }
 
         List<UUID> q = ffaQueues.computeIfAbsent(kit.getId(), k -> new CopyOnWriteArrayList<>());
@@ -278,13 +302,7 @@ public class QueueManager implements Runnable {
             q.remove(player.getUniqueId());
         }
 
-        boolean economyEnabled = plugin.getConfig().getBoolean("ranked.economy.enabled", true);
-        double entryFee = plugin.getConfig().getDouble("ffa.entry-fee", 10.0);
-        Economy economy = plugin.getEconomy();
-
-        if (economyEnabled && entryFee > 0.0 && economy != null) {
-            economy.depositPlayer(player, entryFee);
-        }
+        refundFee(player);
 
         TextUtil.sendPrefixed(player, "<yellow>You left the FFA matchmaking queue. Entry fee refunded.");
         return true;
@@ -364,15 +382,23 @@ public class QueueManager implements Runnable {
                 });
 
                 if (invalid1 || invalid2) {
-                    if (invalid1) removeTicket(candidate1);
-                    if (invalid2) removeTicket(candidate2);
+                    if (invalid1) {
+                        removeTicket(candidate1);
+                        refundTicketFees(candidate1);
+                    }
+                    if (invalid2) {
+                        removeTicket(candidate2);
+                        refundTicketFees(candidate2);
+                    }
                     continue;
                 }
 
                 Kit kit = plugin.getKitManager().getKit(kitId);
                 if (kit == null) {
                     removeTicket(candidate1);
+                    refundTicketFees(candidate1);
                     removeTicket(candidate2);
+                    refundTicketFees(candidate2);
                     break;
                 }
 
@@ -382,48 +408,59 @@ public class QueueManager implements Runnable {
                     break;
                 }
 
-                // Match found! Remove tickets
+                // Match found! Remove tickets, then create the match. If creation
+                // fails, refund both tickets so players are not charged for nothing.
                 removeTicket(candidate1);
                 removeTicket(candidate2);
 
-                if (candidate1.isTeamQueue()) {
-                    List<Player> team0 = new ArrayList<>();
-                    for (UUID u : candidate1.getPartyMembers()) {
-                        Player p = Bukkit.getPlayer(u);
-                        if (p != null) team0.add(p);
+                try {
+                    if (candidate1.isTeamQueue()) {
+                        List<Player> team0 = new ArrayList<>();
+                        for (UUID u : candidate1.getPartyMembers()) {
+                            Player p = Bukkit.getPlayer(u);
+                            if (p != null) team0.add(p);
+                        }
+                        List<Player> team1 = new ArrayList<>();
+                        for (UUID u : candidate2.getPartyMembers()) {
+                            Player p = Bukkit.getPlayer(u);
+                            if (p != null) team1.add(p);
+                        }
+
+                        int modeSize = candidate1.getTeamSize();
+                        String tag = modeSize + "v" + modeSize;
+                        String matchHeader = "<gradient:#00FF88:#00AAFF><bold>" + tag + " MATCH FOUND!</bold></gradient>";
+
+                        for (Player p : team0) {
+                            TextUtil.sendPrefixed(p, matchHeader + " Opponent Team: <gold>Team " + p2.getName() + "</gold> (<yellow>" + candidate2.getInitialElo() + "</yellow> Avg ELO).");
+                        }
+                        for (Player p : team1) {
+                            TextUtil.sendPrefixed(p, matchHeader + " Opponent Team: <gold>Team " + p1.getName() + "</gold> (<yellow>" + candidate1.getInitialElo() + "</yellow> Avg ELO).");
+                        }
+
+                        RankedTeamMatch match = new RankedTeamMatch(plugin, arenaInstance, kit, team0, team1, "Team " + p1.getName(), "Team " + p2.getName());
+                        plugin.getMatchManager().registerMatch(match);
+                        match.start();
+                        consumeTicketFees(candidate1);
+                        consumeTicketFees(candidate2);
+                    } else {
+                        TextUtil.sendPrefixed(p1, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
+                                Placeholder.parsed("opponent", p2.getName()),
+                                Placeholder.parsed("opponent_elo", String.valueOf(candidate2.getInitialElo())));
+
+                        TextUtil.sendPrefixed(p2, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
+                                Placeholder.parsed("opponent", p1.getName()),
+                                Placeholder.parsed("opponent_elo", String.valueOf(candidate1.getInitialElo())));
+
+                        RankedMatch match = new RankedMatch(plugin, arenaInstance, kit, p1, p2);
+                        plugin.getMatchManager().registerMatch(match);
+                        match.start();
+                        consumeTicketFees(candidate1);
+                        consumeTicketFees(candidate2);
                     }
-                    List<Player> team1 = new ArrayList<>();
-                    for (UUID u : candidate2.getPartyMembers()) {
-                        Player p = Bukkit.getPlayer(u);
-                        if (p != null) team1.add(p);
-                    }
-
-                    int modeSize = candidate1.getTeamSize();
-                    String tag = modeSize + "v" + modeSize;
-                    String matchHeader = "<gradient:#00FF88:#00AAFF><bold>" + tag + " MATCH FOUND!</bold></gradient>";
-
-                    for (Player p : team0) {
-                        TextUtil.sendPrefixed(p, matchHeader + " Opponent Team: <gold>Team " + p2.getName() + "</gold> (<yellow>" + candidate2.getInitialElo() + "</yellow> Avg ELO).");
-                    }
-                    for (Player p : team1) {
-                        TextUtil.sendPrefixed(p, matchHeader + " Opponent Team: <gold>Team " + p1.getName() + "</gold> (<yellow>" + candidate1.getInitialElo() + "</yellow> Avg ELO).");
-                    }
-
-                    RankedTeamMatch match = new RankedTeamMatch(plugin, arenaInstance, kit, team0, team1, "Team " + p1.getName(), "Team " + p2.getName());
-                    plugin.getMatchManager().registerMatch(match);
-                    match.start();
-                } else {
-                    TextUtil.sendPrefixed(p1, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
-                            Placeholder.parsed("opponent", p2.getName()),
-                            Placeholder.parsed("opponent_elo", String.valueOf(candidate2.getInitialElo())));
-
-                    TextUtil.sendPrefixed(p2, "<gradient:#00FF88:#00AAFF><bold>MATCH FOUND!</bold></gradient> Opponent: <gold><opponent></gold> (<yellow><opponent_elo></yellow> ELO).",
-                            Placeholder.parsed("opponent", p1.getName()),
-                            Placeholder.parsed("opponent_elo", String.valueOf(candidate1.getInitialElo())));
-
-                    RankedMatch match = new RankedMatch(plugin, arenaInstance, kit, p1, p2);
-                    plugin.getMatchManager().registerMatch(match);
-                    match.start();
+                } catch (RuntimeException ex) {
+                    plugin.getLogger().warning("Failed to start ranked match: " + ex.getMessage());
+                    refundTicketFees(candidate1);
+                    refundTicketFees(candidate2);
                 }
             }
         }
@@ -438,6 +475,7 @@ public class QueueManager implements Runnable {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p == null || !p.isOnline() || plugin.getMatchManager().isInMatch(p)) {
                     ffaQueuePlayers.remove(uuid);
+                    refundFee(uuid);
                     return true;
                 }
                 return false;
@@ -445,7 +483,14 @@ public class QueueManager implements Runnable {
 
             while (list.size() >= targetFfaSize) {
                 Kit kit = plugin.getKitManager().getKit(kitId);
-                if (kit == null) break;
+                if (kit == null) {
+                    for (UUID uuid : list) {
+                        refundFee(uuid);
+                    }
+                    list.clear();
+                    ffaQueuePlayers.clear();
+                    break;
+                }
 
                 // Find available arena instance that supports this kit
                 ArenaInstance arenaInstance = plugin.getArenaManager().findAvailableInstanceForKit(kitId);
@@ -454,20 +499,32 @@ public class QueueManager implements Runnable {
                 }
 
                 List<Player> combatants = new ArrayList<>();
+                List<UUID> pulled = new ArrayList<>();
                 for (int i = 0; i < targetFfaSize; i++) {
                     UUID u = list.remove(0);
+                    pulled.add(u);
                     ffaQueuePlayers.remove(u);
                     Player p = Bukkit.getPlayer(u);
                     if (p != null) combatants.add(p);
                 }
 
-                for (Player p : combatants) {
-                    TextUtil.sendPrefixed(p, "<gradient:#00FFAA:#00AAFF><bold>FFA MATCH FOUND!</bold></gradient> Entering arena with <gold>" + combatants.size() + " combatants</gold>!");
-                }
+                try {
+                    for (Player p : combatants) {
+                        TextUtil.sendPrefixed(p, "<gradient:#00FFAA:#00AAFF><bold>FFA MATCH FOUND!</bold></gradient> Entering arena with <gold>" + combatants.size() + " combatants</gold>!");
+                    }
 
-                FfaMatch match = new FfaMatch(plugin, arenaInstance, kit, combatants);
-                plugin.getMatchManager().registerMatch(match);
-                match.start();
+                    FfaMatch match = new FfaMatch(plugin, arenaInstance, kit, combatants);
+                    plugin.getMatchManager().registerMatch(match);
+                    match.start();
+                    for (UUID uuid : pulled) {
+                        paidEntryFees.remove(uuid);
+                    }
+                } catch (RuntimeException ex) {
+                    plugin.getLogger().warning("Failed to start FFA match: " + ex.getMessage());
+                    for (UUID uuid : pulled) {
+                        refundFee(uuid);
+                    }
+                }
             }
         }
     }
@@ -479,6 +536,47 @@ public class QueueManager implements Runnable {
         List<QueueTicket> list = queues.get(ticket.getKitId());
         if (list != null) {
             list.remove(ticket);
+        }
+    }
+
+    private void recordFee(@NotNull UUID uuid, double amount) {
+        if (amount > 0.0) {
+            paidEntryFees.put(uuid, amount);
+        }
+    }
+
+    /** Refunds the exact fee recorded for this player, at most once. */
+    private void refundFee(@NotNull Player player) {
+        refundFee(player.getUniqueId());
+    }
+
+    private void refundFee(@NotNull UUID uuid) {
+        Double paid = paidEntryFees.remove(uuid);
+        if (paid == null || paid <= 0.0) {
+            return;
+        }
+        Economy economy = plugin.getEconomy();
+        if (economy == null) {
+            return;
+        }
+        Player online = Bukkit.getPlayer(uuid);
+        if (online != null && online.isOnline()) {
+            economy.depositPlayer(online, paid);
+        } else if (plugin.getServer() != null) {
+            economy.depositPlayer(plugin.getServer().getOfflinePlayer(uuid), paid);
+        }
+    }
+
+    private void refundTicketFees(@NotNull QueueTicket ticket) {
+        for (UUID u : ticket.getPartyMembers()) {
+            refundFee(u);
+        }
+    }
+
+    /** Marks a ticket's entry fees as consumed once its match has actually started. */
+    private void consumeTicketFees(@NotNull QueueTicket ticket) {
+        for (UUID u : ticket.getPartyMembers()) {
+            paidEntryFees.remove(u);
         }
     }
 }

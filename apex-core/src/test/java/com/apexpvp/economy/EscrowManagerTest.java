@@ -167,4 +167,63 @@ class EscrowManagerTest {
         verify(economy, never()).has(any(Player.class), anyDouble());
         verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
     }
+
+    @Test
+    @DisplayName("Simulated win returns the single stake minus tax, never 2x")
+    void testSimulatedPayoutIsSingleStake() {
+        UUID matchId = UUID.randomUUID();
+        UUID botUuid = UUID.randomUUID();
+        double stake = 100.0;
+
+        when(economy.has(player1, stake)).thenReturn(true);
+        when(economy.withdrawPlayer(eq(player1), eq(stake)))
+                .thenReturn(new EconomyResponse(stake, 900.0, EconomyResponse.ResponseType.SUCCESS, ""));
+
+        assertTrue(escrowManager.lockSimulatedStake(matchId, player1, botUuid, stake));
+        verify(economy, times(1)).withdrawPlayer(player1, stake);
+
+        OfflinePlayer winner = mock(OfflinePlayer.class);
+        when(winner.getName()).thenReturn("Challenger");
+
+        escrowManager.distributePayout(matchId, winner, 5.0);
+
+        // Pot = 100 (one contribution), tax = 5, net = 95. Paying 190 would mint coins.
+        verify(economy, times(1)).depositPlayer(winner, 95.0);
+        verify(economy, never()).depositPlayer(any(OfflinePlayer.class), eq(190.0));
+    }
+
+    @Test
+    @DisplayName("Simulated loss consumes the stake without any payout")
+    void testSimulatedLossConsumesStake() {
+        UUID matchId = UUID.randomUUID();
+        UUID botUuid = UUID.randomUUID();
+        double stake = 50.0;
+
+        when(economy.has(player1, stake)).thenReturn(true);
+        when(economy.withdrawPlayer(eq(player1), eq(stake)))
+                .thenReturn(new EconomyResponse(stake, 450.0, EconomyResponse.ResponseType.SUCCESS, ""));
+
+        assertTrue(escrowManager.lockSimulatedStake(matchId, player1, botUuid, stake));
+        escrowManager.consumeEscrow(matchId);
+
+        verify(economy, never()).depositPlayer(any(OfflinePlayer.class), anyDouble());
+    }
+
+    @Test
+    @DisplayName("Simulated draw refunds the human stake once and never the bot")
+    void testSimulatedRefundPaysOnlyHuman() {
+        UUID matchId = UUID.randomUUID();
+        UUID botUuid = UUID.randomUUID();
+        double stake = 30.0;
+
+        when(economy.has(player1, stake)).thenReturn(true);
+        when(economy.withdrawPlayer(eq(player1), eq(stake)))
+                .thenReturn(new EconomyResponse(stake, 470.0, EconomyResponse.ResponseType.SUCCESS, ""));
+
+        assertTrue(escrowManager.lockSimulatedStake(matchId, player1, botUuid, stake));
+        escrowManager.refund(matchId);
+
+        verify(economy, times(1)).depositPlayer(server.getOfflinePlayer(p1Uuid), stake);
+        verify(economy, never()).depositPlayer(server.getOfflinePlayer(botUuid), stake);
+    }
 }

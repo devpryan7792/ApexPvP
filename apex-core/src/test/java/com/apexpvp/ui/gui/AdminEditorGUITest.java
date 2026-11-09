@@ -52,6 +52,7 @@ public class AdminEditorGUITest {
         when(player.getUniqueId()).thenReturn(uuid);
         when(player.getName()).thenReturn("AdminDev");
         when(player.hasPermission("apexpvp.admin")).thenReturn(true);
+        when(player.hasPermission("apexpvp.duel")).thenReturn(true);
     }
 
     @Test

@@ -173,8 +173,8 @@ public class AdminEditorGUI implements Listener {
                 plugin.getAdminArenaListGUI().open(player);
             }
             case 13 -> {
-                // Open Kits Showcase
-                plugin.getKitGUI().open(player);
+                // Open Kits Showcase in Editor Mode
+                plugin.getKitGUI().open(player, true);
             }
             case 14 -> {
                 // Settings info
